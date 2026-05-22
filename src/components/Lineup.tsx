@@ -389,12 +389,7 @@ function PlayerMarker({
         ) : (
           <span className="text-sm sm:text-xl md:text-2xl">{number}</span>
         )}
-        <span
-          className="absolute -bottom-0.5 -right-0.5 h-5 w-5 sm:h-6 sm:w-6 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-display"
-          style={{ backgroundColor: color, color: isLight ? "#1a1a1a" : "#ffffff" }}
-        >
-          {number}
-        </span>
+        
       </button>
       {name && (
         <span className="mt-1 px-2 py-0.5 text-[11px] font-semibold bg-primary text-primary-foreground rounded whitespace-nowrap max-w-[120px] truncate">
