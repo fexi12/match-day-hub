@@ -99,7 +99,7 @@ export function Lineup() {
     const { data, error: fetchErr } = await supabase
       .from("matches")
       .select("home_players, away_players")
-      .eq("id", match.id)
+      .eq("id", matchId)
       .single();
     if (fetchErr || !data) {
       toast.success("Claimed!");
