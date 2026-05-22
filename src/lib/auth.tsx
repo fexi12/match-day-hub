@@ -39,11 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const uid = session?.user?.id;
     if (!uid) { setIsAdmin(false); setIsApproved(false); return; }
     supabase.from("user_roles").select("role").eq("user_id", uid)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        console.log("[auth] roles query", { uid, data, error });
         const roles = new Set((data ?? []).map((r) => r.role));
         const admin = roles.has("admin");
         setIsAdmin(admin);
         setIsApproved(admin || roles.has("moderator"));
+        console.log("[auth] resolved", { isAdmin: admin, isApproved: admin || roles.has("moderator") });
       });
   }, [session?.user?.id]);
 
