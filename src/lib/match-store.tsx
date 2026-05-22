@@ -62,6 +62,7 @@ export function normalizePlayers(raw: unknown): Player[] {
       return {
         name: typeof obj.name === "string" ? obj.name : "",
         photo_url: typeof obj.photo_url === "string" ? obj.photo_url : undefined,
+        email: typeof obj.email === "string" ? obj.email : undefined,
       };
     }
     return { name: "" };
