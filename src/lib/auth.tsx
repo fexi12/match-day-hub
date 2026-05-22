@@ -20,6 +20,7 @@ const Ctx = createContext<AuthCtx | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
@@ -31,6 +32,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid) { setIsAdmin(false); return; }
+    supabase.from("user_roles").select("role").eq("user_id", uid).eq("role", "admin").maybeSingle()
+      .then(({ data }) => setIsAdmin(!!data));
+  }, [session?.user?.id]);
 
   const signInWithGoogle = async () => {
     const result = await lovable.auth.signInWithOAuth("google", {
@@ -64,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: session?.user ?? null,
         session,
         loading,
+        isAdmin,
         signInWithGoogle,
         signInWithEmail,
         signUpWithEmail,

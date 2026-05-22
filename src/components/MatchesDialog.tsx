@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { FolderOpen, Search, Trash2, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMatch, defaultMatch, normalizePlayers, type MatchState } from "@/lib/match-store";
+import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
 type Row = {
@@ -22,6 +23,7 @@ export function MatchesDialog() {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const { load } = useMatch();
+  const { isAdmin } = useAuth();
 
   useEffect(() => {
     if (!open) return;
@@ -137,16 +139,18 @@ export function MatchesDialog() {
                   {r.location ? ` · ${r.location}` : ""}
                 </p>
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeRow(r.id);
-                }}
-                className="text-muted-foreground hover:text-destructive p-2"
-                aria-label="Delete match"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeRow(r.id);
+                  }}
+                  className="text-muted-foreground hover:text-destructive p-2"
+                  aria-label="Delete match"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
             </div>
           ))}
         </div>
