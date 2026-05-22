@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
 import logo from "@/assets/ararat-porto-logo.png";
-import jersey from "@/assets/ararat-porto-jersey.png";
+
 import { Lineup } from "@/components/Lineup";
 import { Jerseys } from "@/components/Jerseys";
 import { Statistics } from "@/components/Statistics";
@@ -78,19 +78,7 @@ function Page() {
               From the bridges of Porto to the slopes of Ararat — set the pitch, pick the kits,
               track every play, and keep every match on record.
             </p>
-            <div className="mt-10 flex items-center gap-6">
-              <img
-                src={jersey}
-                alt="Ararat Porto official jersey"
-                className="h-48 md:h-56 w-auto object-contain drop-shadow-xl"
-              />
-              <div>
-                <p className="text-xs tracking-[0.3em] text-muted-foreground">OFFICIAL KIT</p>
-                <p className="font-display text-2xl mt-1">2026 Home Jersey</p>
-              </div>
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-3 font-display tracking-wider">
+            <div className="mt-10 flex flex-wrap gap-3 font-display tracking-wider">
               <a href="#lineup" className="px-6 py-3 bg-primary text-primary-foreground border-2 border-primary">
                 BUILD THE LINEUP
               </a>
@@ -104,9 +92,9 @@ function Page() {
       </header>
 
       <Lineup />
-      <Jerseys />
       <Statistics />
       <Videos />
+      <Jerseys />
 
       <footer className="bg-background py-10 text-center text-sm text-muted-foreground">
         <p>© Ararat Porto FC · Forjado no Porto</p>
