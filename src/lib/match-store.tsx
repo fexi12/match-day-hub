@@ -98,7 +98,7 @@ export function MatchProvider({ children }: { children: ReactNode }) {
   const reset = useCallback(() => setMatch(defaultMatch()), []);
   const load = useCallback((m: MatchState) => setMatch(m), []);
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (): Promise<string | null> => {
     setSaving(true);
     try {
       const payload = {
@@ -122,14 +122,17 @@ export function MatchProvider({ children }: { children: ReactNode }) {
         const { error } = await supabase.from("matches").update(payload).eq("id", match.id);
         if (error) throw error;
         toast.success("Match updated");
+        return match.id;
       } else {
         const { data, error } = await supabase.from("matches").insert(payload).select().single();
         if (error) throw error;
         setMatch((m) => ({ ...m, id: data.id }));
         toast.success("Match saved");
+        return data.id as string;
       }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Save failed");
+      return null;
     } finally {
       setSaving(false);
     }
