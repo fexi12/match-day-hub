@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { Save, LogIn, LogOut, ShieldCheck, Menu } from "lucide-react";
 import logo from "@/assets/ararat-porto-logo.png";
+import venue from "@/assets/match-venue.jpg";
 
 import { Lineup } from "@/components/Lineup";
 import { Jerseys } from "@/components/Jerseys";
@@ -42,12 +43,18 @@ function Page() {
   const { save, saving } = useMatch();
   const { user, signOut, isAdmin } = useAuth();
 
-  const navLinks = (
+  const navLinks = user ? (
     <div className="flex flex-col gap-1">
       <a href="#lineup" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">SQUAD</a>
       <a href="#stats" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">STATS</a>
       <a href="#videos" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">VIDEOS</a>
       <a href="/rankings" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">RANKINGS</a>
+    </div>
+  ) : (
+    <div className="flex flex-col gap-1">
+      <a href="#lineup" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">SQUAD</a>
+      <a href="#stats" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">STATS</a>
+      <a href="#videos" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">VIDEOS</a>
     </div>
   );
 
@@ -96,7 +103,7 @@ function Page() {
               <a href="#lineup" className="hover:text-accent transition">SQUAD</a>
               <a href="#stats" className="hover:text-accent transition">STATS</a>
               <a href="#videos" className="hover:text-accent transition">VIDEOS</a>
-              <a href="/rankings" className="hover:text-accent transition">RANKINGS</a>
+              {user && <a href="/rankings" className="hover:text-accent transition">RANKINGS</a>}
             </div>
             <MatchesDialog />
             {user ? (
@@ -184,14 +191,60 @@ function Page() {
                   <a href="#stats" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
                     STATS
                   </a>
-                  <a href="/rankings" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
-                    RANKINGS
-                  </a>
                 </>
               )}
             </div>
           </div>
           {user && <MatchHero />}
+          {!user && (
+            <div className="w-full md:w-96 border-2 border-primary rounded-xl bg-card shadow-xl overflow-hidden">
+              <img src={venue} alt="Match venue" className="h-40 w-full object-cover" />
+              <div className="p-5 space-y-4">
+                <div>
+                  <p className="text-[10px] tracking-[0.2em] text-muted-foreground">MATCH NAME</p>
+                  <p className="mt-1 font-display text-xl border-0 px-0 shadow-none h-auto py-1">{match.name}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[10px] tracking-[0.2em] text-muted-foreground">HOME</p>
+                    <p className="mt-1 font-display text-sm">Ararat Porto</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] tracking-[0.2em] text-muted-foreground">OPPONENT</p>
+                    <p className="mt-1 font-display text-sm">{match.opponent || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] tracking-[0.2em] text-muted-foreground">DATE</p>
+                    <p className="mt-1 font-display text-sm">{match.match_date || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] tracking-[0.2em] text-muted-foreground">KICK-OFF</p>
+                    <p className="mt-1 font-display text-sm">{match.kickoff || "—"}</p>
+                  </div>
+                  {match.referee && (
+                    <div>
+                      <p className="text-[10px] tracking-[0.2em] text-muted-foreground">REFEREE</p>
+                      <p className="mt-1 font-display text-sm">{match.referee}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-[10px] tracking-[0.2em] text-muted-foreground">FORMAT</p>
+                    <p className="mt-1 font-display text-sm">{match.format}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] tracking-[0.2em] text-muted-foreground">DURATION</p>
+                    <p className="mt-1 font-display text-sm">{match.duration || "—"}</p>
+                  </div>
+                  {match.location && (
+                    <div className="col-span-2">
+                      <p className="text-[10px] tracking-[0.2em] text-muted-foreground">LOCATION</p>
+                      <p className="mt-1 font-display text-sm">{match.location}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
