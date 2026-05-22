@@ -44,7 +44,7 @@ const ensureSize = (arr: Player[], n: number): Player[] => {
 };
 
 export function Lineup() {
-  const { match, update, load, canEdit } = useMatch();
+  const { match, update, load, save, canEdit } = useMatch();
   const { user, signInWithGoogle } = useAuth();
   const size = useMemo(() => parseInt(match.format), [match.format]);
   const positions = FORMATIONS[match.format];
