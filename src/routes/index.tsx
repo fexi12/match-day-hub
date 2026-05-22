@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { Save, LogIn, LogOut, ShieldCheck } from "lucide-react";
+import { Save, LogIn, LogOut, ShieldCheck, Menu, X } from "lucide-react";
 import logo from "@/assets/ararat-porto-logo.png";
 
 import { Lineup } from "@/components/Lineup";
@@ -11,6 +11,7 @@ import { Videos } from "@/components/Videos";
 import { MatchHero } from "@/components/MatchHero";
 import { Weather } from "@/components/Weather";
 import { MatchesDialog } from "@/components/MatchesDialog";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { MatchProvider, useMatch } from "@/lib/match-store";
 import { AuthProvider, useAuth } from "@/lib/auth";
 
@@ -38,8 +39,37 @@ function Index() {
 }
 
 function Page() {
-  const { save, saving, canEdit } = useMatch();
+  const { save, saving } = useMatch();
   const { user, signOut, isAdmin } = useAuth();
+
+  const navLinks = (
+    <div className="flex flex-col gap-1">
+      <a href="#lineup" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">SQUAD</a>
+      <a href="#jerseys" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">KIT</a>
+      <a href="#stats" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">STATS</a>
+      <a href="#videos" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">VIDEOS</a>
+    </div>
+  );
+
+  const actions = user ? (
+    <>
+      {isAdmin && (
+        <Button asChild variant="outline" className="font-display tracking-wider w-full justify-center">
+          <Link to="/admin"><ShieldCheck className="h-4 w-4 mr-2" />ADMIN</Link>
+        </Button>
+      )}
+      <Button onClick={save} disabled={saving} className="font-display tracking-wider w-full justify-center">
+        <Save className="h-4 w-4 mr-2" /> {saving ? "SAVING…" : "SAVE"}
+      </Button>
+      <Button onClick={signOut} variant="outline" className="font-display tracking-wider w-full justify-center">
+        <LogOut className="h-4 w-4 mr-2" /> SIGN OUT
+      </Button>
+    </>
+  ) : (
+    <Button asChild className="font-display tracking-wider w-full justify-center">
+      <Link to="/login"><LogIn className="h-4 w-4 mr-2" /> SIGN IN</Link>
+    </Button>
+  );
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -56,8 +86,10 @@ function Page() {
             <img src={logo} alt="Ararat Porto crest" className="h-10 w-10 object-contain" />
             <span className="font-display text-lg tracking-wider">Ararat Porto FC</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="hidden md:flex gap-6 text-sm font-semibold tracking-wider mr-4">
+
+          {/* Desktop nav */}
+          <div className="hidden lg:flex items-center gap-2">
+            <div className="flex gap-6 text-sm font-semibold tracking-wider mr-4">
               <a href="#lineup" className="hover:text-accent transition">SQUAD</a>
               <a href="#jerseys" className="hover:text-accent transition">KIT</a>
               <a href="#stats" className="hover:text-accent transition">STATS</a>
@@ -71,20 +103,47 @@ function Page() {
                     <Link to="/admin"><ShieldCheck className="h-4 w-4 mr-2" />ADMIN</Link>
                   </Button>
                 )}
-                <Button onClick={save} disabled={saving || !canEdit} className="font-display tracking-wider">
+                <Button onClick={save} disabled={saving} className="font-display tracking-wider">
                   <Save className="h-4 w-4 mr-2" /> {saving ? "SAVING…" : "SAVE"}
                 </Button>
-                <Button onClick={signOut} variant="outline" className="font-display tracking-wider" title={user.email ?? ""}>
+                <Button onClick={signOut} variant="outline" className="font-display tracking-wider">
                   <LogOut className="h-4 w-4 mr-2" /> SIGN OUT
                 </Button>
               </>
             ) : (
               <Button asChild className="font-display tracking-wider">
-                <Link to="/login">
-                  <LogIn className="h-4 w-4 mr-2" /> SIGN IN
-                </Link>
+                <Link to="/login"><LogIn className="h-4 w-4 mr-2" /> SIGN IN</Link>
               </Button>
             )}
+          </div>
+
+          {/* Mobile hamburger */}
+          <div className="flex lg:hidden items-center gap-2">
+            {user && (
+              <Button onClick={save} disabled={saving} size="sm" className="font-display tracking-wider">
+                <Save className="h-4 w-4" />
+              </Button>
+            )}
+            <Sheet>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  className="p-2 rounded-md hover:bg-accent/20 transition"
+                  aria-label="Open menu"
+                >
+                  <Menu className="h-6 w-6" />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-72 pt-8">
+                {navLinks}
+                <div className="mt-6 flex flex-col gap-2">
+                  <div className="mb-2">
+                    <MatchesDialog />
+                  </div>
+                  {actions}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </nav>
 

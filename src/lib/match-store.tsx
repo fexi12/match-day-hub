@@ -82,18 +82,18 @@ type Ctx = {
 const MatchCtx = createContext<Ctx | null>(null);
 
 export function MatchProvider({ children }: { children: ReactNode }) {
-  const { user, isApproved } = useAuth();
-  const canEdit = !!user && isApproved;
+  const { user } = useAuth();
+  const canEdit = !!user;
   const [match, setMatch] = useState<MatchState>(defaultMatch());
   const [saving, setSaving] = useState(false);
 
   const update = useCallback(<K extends keyof MatchState>(key: K, value: MatchState[K]) => {
-    if (!canEdit) {
-      toast.error(user ? "Your account is not approved to edit yet" : "Sign in to edit");
+    if (!user) {
+      toast.error("Sign in to edit");
       return;
     }
     setMatch((m) => ({ ...m, [key]: value }));
-  }, [canEdit, user]);
+  }, [user]);
 
   const reset = useCallback(() => setMatch(defaultMatch()), []);
   const load = useCallback((m: MatchState) => setMatch(m), []);
