@@ -154,6 +154,9 @@ export function Lineup() {
                 number={i + 1}
                 player={awayPlayers[i]}
                 photo={resolvePhoto(awayPlayers[i])}
+                onClaim={() => claimSlot("away", i)}
+                userEmail={user?.email ?? null}
+                isSignedIn={!!user}
               />
             ))}
             {positions.home.map(([x, y], i) => (
@@ -165,8 +168,12 @@ export function Lineup() {
                 number={i + 1}
                 player={homePlayers[i]}
                 photo={resolvePhoto(homePlayers[i])}
+                onClaim={() => claimSlot("home", i)}
+                userEmail={user?.email ?? null}
+                isSignedIn={!!user}
               />
             ))}
+
           </div>
 
           <div className="flex flex-col gap-6">
