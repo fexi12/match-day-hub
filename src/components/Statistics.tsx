@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Plus, Trash2 } from "lucide-react";
+
+type Goal = { id: number; team: "home" | "away"; minute: string; scorer: string; assist: string };
 
 type Stat = { label: string; home: number; away: number };
 
