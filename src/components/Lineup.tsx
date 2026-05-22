@@ -200,7 +200,7 @@ function Jersey({ x, y, color, number, name }: { x: number; y: number; color: st
       style={{ left: `${x}%`, top: `${y}%` }}
     >
       <div
-        className="h-11 w-11 sm:h-14 sm:w-14 rounded-full border-2 border-white flex items-center justify-center font-display text-xl sm:text-2xl shadow-lg"
+        className="h-8 w-8 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-full border-2 border-white flex items-center justify-center font-display text-sm sm:text-xl md:text-2xl shadow-lg"
         style={{ backgroundColor: color, color: isLight ? "#1a1a1a" : "#ffffff" }}
       >
         {number}
