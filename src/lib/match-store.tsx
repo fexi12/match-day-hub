@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -86,6 +86,38 @@ export function MatchProvider({ children }: { children: ReactNode }) {
   const canEdit = !!user;
   const [match, setMatch] = useState<MatchState>(defaultMatch());
   const [saving, setSaving] = useState(false);
+
+  // On mount, load the most recently updated match so the user resumes editing
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("matches")
+      .select("*")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setMatch({
+            id: data.id,
+            name: data.name,
+            opponent: data.opponent,
+            match_date: data.match_date ?? "",
+            kickoff: data.kickoff ?? "",
+            duration: data.duration ?? "",
+            location: data.location ?? "",
+            format: (data.format as Format) ?? "7v7",
+            home_color: data.home_color,
+            away_color: data.away_color,
+            home_players: normalizePlayers(data.home_players),
+            away_players: normalizePlayers(data.away_players),
+            stats: (data.stats as Stat[]) ?? DEFAULT_STATS,
+            goals: (data.goals as Goal[]) ?? [],
+            videos: (data.videos as Video[]) ?? [],
+          });
+        }
+      });
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const update = useCallback(<K extends keyof MatchState>(key: K, value: MatchState[K]) => {
     if (!user) {
