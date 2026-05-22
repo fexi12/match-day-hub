@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
 export type Format = "5v5" | "7v7" | "8v8" | "11v11";
@@ -74,17 +75,24 @@ type Ctx = {
   load: (m: MatchState) => void;
   save: () => Promise<void>;
   saving: boolean;
+  canEdit: boolean;
 };
 
 const MatchCtx = createContext<Ctx | null>(null);
 
 export function MatchProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const canEdit = !!user;
   const [match, setMatch] = useState<MatchState>(defaultMatch());
   const [saving, setSaving] = useState(false);
 
   const update = useCallback(<K extends keyof MatchState>(key: K, value: MatchState[K]) => {
+    if (!canEdit) {
+      toast.error("Sign in to edit");
+      return;
+    }
     setMatch((m) => ({ ...m, [key]: value }));
-  }, []);
+  }, [canEdit]);
 
   const reset = useCallback(() => setMatch(defaultMatch()), []);
   const load = useCallback((m: MatchState) => setMatch(m), []);
@@ -127,7 +135,7 @@ export function MatchProvider({ children }: { children: ReactNode }) {
   }, [match]);
 
   return (
-    <MatchCtx.Provider value={{ match, update, reset, load, save, saving }}>
+    <MatchCtx.Provider value={{ match, update, reset, load, save, saving, canEdit }}>
       {children}
     </MatchCtx.Provider>
   );
