@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { Save, LogIn, LogOut } from "lucide-react";
+import { Save, LogIn, LogOut, ShieldCheck } from "lucide-react";
 import logo from "@/assets/ararat-porto-logo.png";
 
 import { Lineup } from "@/components/Lineup";
@@ -37,8 +37,8 @@ function Index() {
 }
 
 function Page() {
-  const { save, saving } = useMatch();
-  const { user, signOut } = useAuth();
+  const { save, saving, canEdit } = useMatch();
+  const { user, signOut, isAdmin } = useAuth();
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -65,7 +65,12 @@ function Page() {
             <MatchesDialog />
             {user ? (
               <>
-                <Button onClick={save} disabled={saving} className="font-display tracking-wider">
+                {isAdmin && (
+                  <Button asChild variant="outline" className="font-display tracking-wider">
+                    <Link to="/admin"><ShieldCheck className="h-4 w-4 mr-2" />ADMIN</Link>
+                  </Button>
+                )}
+                <Button onClick={save} disabled={saving || !canEdit} className="font-display tracking-wider">
                   <Save className="h-4 w-4 mr-2" /> {saving ? "SAVING…" : "SAVE"}
                 </Button>
                 <Button onClick={signOut} variant="outline" className="font-display tracking-wider" title={user.email ?? ""}>
