@@ -74,7 +74,7 @@ type Ctx = {
   update: <K extends keyof MatchState>(key: K, value: MatchState[K]) => void;
   reset: () => void;
   load: (m: MatchState) => void;
-  save: () => Promise<void>;
+  save: () => Promise<string | null>;
   saving: boolean;
   canEdit: boolean;
 };
