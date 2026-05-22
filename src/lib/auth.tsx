@@ -80,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         loading,
         isAdmin,
+        isApproved,
         signInWithGoogle,
         signInWithEmail,
         signUpWithEmail,
