@@ -5,6 +5,7 @@ import { Save } from "lucide-react";
 import logo from "@/assets/ararat-porto-logo.png";
 import jersey from "@/assets/ararat-porto-jersey.png";
 import { Lineup } from "@/components/Lineup";
+import { Jerseys } from "@/components/Jerseys";
 import { Statistics } from "@/components/Statistics";
 import { Videos } from "@/components/Videos";
 import { MatchHero } from "@/components/MatchHero";
