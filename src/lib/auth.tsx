@@ -22,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isApproved, setIsApproved] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
@@ -36,9 +37,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const uid = session?.user?.id;
-    if (!uid) { setIsAdmin(false); return; }
-    supabase.from("user_roles").select("role").eq("user_id", uid).eq("role", "admin").maybeSingle()
-      .then(({ data }) => setIsAdmin(!!data));
+    if (!uid) { setIsAdmin(false); setIsApproved(false); return; }
+    supabase.from("user_roles").select("role").eq("user_id", uid)
+      .then(({ data }) => {
+        const roles = new Set((data ?? []).map((r) => r.role));
+        const admin = roles.has("admin");
+        setIsAdmin(admin);
+        setIsApproved(admin || roles.has("moderator"));
+      });
   }, [session?.user?.id]);
 
   const signInWithGoogle = async () => {
