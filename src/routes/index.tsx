@@ -37,8 +37,8 @@ function Index() {
 }
 
 function Page() {
-  const { save, saving } = useMatch();
-  const { user, signOut } = useAuth();
+  const { save, saving, canEdit } = useMatch();
+  const { user, signOut, isAdmin } = useAuth();
 
   return (
     <main className="min-h-screen bg-background text-foreground">
