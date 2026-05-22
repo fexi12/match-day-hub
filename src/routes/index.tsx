@@ -54,6 +54,7 @@ function Page() {
           <div className="flex items-center gap-2">
             <div className="hidden md:flex gap-6 text-sm font-semibold tracking-wider mr-4">
               <a href="#lineup" className="hover:text-accent transition">SQUAD</a>
+              <a href="#jerseys" className="hover:text-accent transition">KIT</a>
               <a href="#stats" className="hover:text-accent transition">STATS</a>
               <a href="#videos" className="hover:text-accent transition">VIDEOS</a>
             </div>
