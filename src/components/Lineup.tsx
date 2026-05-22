@@ -1,8 +1,6 @@
-import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useMemo } from "react";
 import { Input } from "@/components/ui/input";
-
-type Format = "5v5" | "7v7" | "8v8" | "11v11";
+import { useMatch, type Format } from "@/lib/match-store";
 
 const FORMATIONS: Record<Format, { home: [number, number][]; away: [number, number][] }> = {
   "5v5": {
@@ -35,25 +33,21 @@ const SHIRT_COLORS = [
 ];
 
 export function Lineup() {
-  const [format, setFormat] = useState<Format>("7v7");
-  const [homeColor, setHomeColor] = useState("#1e3a5f");
-  const [awayColor, setAwayColor] = useState("#d44a2a");
-  const [homeNames, setHomeNames] = useState<string[]>([]);
-  const [awayNames, setAwayNames] = useState<string[]>([]);
-
-  const size = useMemo(() => parseInt(format), [format]);
-  const positions = FORMATIONS[format];
+  const { match, update } = useMatch();
+  const size = useMemo(() => parseInt(match.format), [match.format]);
+  const positions = FORMATIONS[match.format];
 
   const setName = (team: "home" | "away", i: number, v: string) => {
-    const arr = team === "home" ? [...homeNames] : [...awayNames];
+    const key = team === "home" ? "home_players" : "away_players";
+    const arr = [...match[key]];
     arr[i] = v;
-    team === "home" ? setHomeNames(arr) : setAwayNames(arr);
+    update(key, arr);
   };
 
   return (
     <section id="lineup" className="bg-background border-b border-border">
-      <div className="mx-auto max-w-6xl px-6 py-20">
-        <p className="text-sm tracking-[0.3em] text-ember" style={{ color: "var(--color-ember)" }}>
+      <div className="mx-auto max-w-7xl px-6 py-20">
+        <p className="text-sm tracking-[0.3em]" style={{ color: "var(--color-ember)" }}>
           Tactics Board
         </p>
         <h2 className="mt-2 text-5xl md:text-6xl">The Squad</h2>
@@ -62,13 +56,13 @@ export function Lineup() {
         <div className="mt-10 flex flex-wrap items-end gap-8">
           <div>
             <p className="mb-3 text-xs tracking-[0.25em] text-muted-foreground">FORMAT</p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {(["5v5", "7v7", "8v8", "11v11"] as Format[]).map((f) => (
                 <button
                   key={f}
-                  onClick={() => setFormat(f)}
+                  onClick={() => update("format", f)}
                   className={`px-5 py-2 font-display text-lg border-2 transition ${
-                    format === f
+                    match.format === f
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-background border-border hover:border-primary"
                   }`}
@@ -79,37 +73,35 @@ export function Lineup() {
             </div>
           </div>
 
-          <ColorPicker label="HOME KIT" value={homeColor} onChange={setHomeColor} />
-          <ColorPicker label="AWAY KIT" value={awayColor} onChange={setAwayColor} />
+          <ColorPicker label="HOME KIT" value={match.home_color} onChange={(v) => update("home_color", v)} />
+          <ColorPicker label="AWAY KIT" value={match.away_color} onChange={(v) => update("away_color", v)} />
         </div>
 
-        {/* Field + Rosters */}
-        <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
-          {/* Pitch */}
-          <div className="relative aspect-[3/4] sm:aspect-[2/3] rounded-xl overflow-hidden shadow-2xl border-2 border-primary">
+        {/* Field + Rosters — pitch gets much more room */}
+        <div className="mt-10 grid grid-cols-1 lg:grid-cols-[2.2fr_1fr] gap-8">
+          <div className="relative aspect-[4/5] sm:aspect-[3/4] md:aspect-[1/1.05] rounded-xl overflow-hidden shadow-2xl border-2 border-primary">
             <Pitch />
             {positions.away.map(([x, y], i) => (
-              <Jersey key={`a${i}`} x={x} y={y} color={awayColor} number={i + 1} name={awayNames[i]} />
+              <Jersey key={`a${i}`} x={x} y={y} color={match.away_color} number={i + 1} name={match.away_players[i]} />
             ))}
             {positions.home.map(([x, y], i) => (
-              <Jersey key={`h${i}`} x={x} y={y} color={homeColor} number={i + 1} name={homeNames[i]} />
+              <Jersey key={`h${i}`} x={x} y={y} color={match.home_color} number={i + 1} name={match.home_players[i]} />
             ))}
           </div>
 
-          {/* Rosters */}
           <div className="flex flex-col gap-6">
             <Roster
-              title="Ararat Porto"
-              color={homeColor}
+              title="Home Team"
+              color={match.home_color}
               size={size}
-              names={homeNames}
+              names={match.home_players}
               onChange={(i, v) => setName("home", i, v)}
             />
             <Roster
-              title="Rivals FC"
-              color={awayColor}
+              title={match.opponent || "Away Team"}
+              color={match.away_color}
               size={size}
-              names={awayNames}
+              names={match.away_players}
               onChange={(i, v) => setName("away", i, v)}
             />
           </div>
@@ -123,7 +115,7 @@ function ColorPicker({ label, value, onChange }: { label: string; value: string;
   return (
     <div>
       <p className="mb-3 text-xs tracking-[0.25em] text-muted-foreground">{label}</p>
-      <div className="flex gap-2 items-center">
+      <div className="flex gap-2 items-center flex-wrap">
         {SHIRT_COLORS.map((c) => (
           <button
             key={c.value}
@@ -191,7 +183,6 @@ function Pitch() {
         <line x1="3" y1="70" x2="97" y2="70" />
         <circle cx="50" cy="70" r="10" />
         <circle cx="50" cy="70" r="0.8" fill="#f0e8d6" />
-        {/* boxes */}
         <rect x="25" y="3" width="50" height="16" />
         <rect x="37" y="3" width="26" height="7" />
         <rect x="25" y="121" width="50" height="16" />
@@ -209,13 +200,13 @@ function Jersey({ x, y, color, number, name }: { x: number; y: number; color: st
       style={{ left: `${x}%`, top: `${y}%` }}
     >
       <div
-        className="h-9 w-9 sm:h-11 sm:w-11 rounded-full border-2 border-white flex items-center justify-center font-display text-lg shadow-lg"
+        className="h-11 w-11 sm:h-14 sm:w-14 rounded-full border-2 border-white flex items-center justify-center font-display text-xl sm:text-2xl shadow-lg"
         style={{ backgroundColor: color, color: isLight ? "#1a1a1a" : "#ffffff" }}
       >
         {number}
       </div>
       {name && (
-        <span className="mt-1 px-1.5 py-0.5 text-[10px] font-semibold bg-primary text-primary-foreground rounded whitespace-nowrap max-w-[80px] truncate">
+        <span className="mt-1 px-2 py-0.5 text-[11px] font-semibold bg-primary text-primary-foreground rounded whitespace-nowrap max-w-[110px] truncate">
           {name}
         </span>
       )}
