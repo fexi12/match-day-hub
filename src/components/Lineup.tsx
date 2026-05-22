@@ -327,6 +327,7 @@ function Pitch() {
         <rect x="3" y="3" width="94" height="134" />
         <line x1="3" y1="70" x2="97" y2="70" />
         <circle cx="50" cy="70" r="10" />
+        <circle cx="50" cy="70" r="0.8" fill="#f0e8d6" />
         <rect x="25" y="3" width="50" height="16" />
         <rect x="37" y="3" width="26" height="7" />
         <rect x="25" y="121" width="50" height="16" />
@@ -389,7 +390,7 @@ function PlayerMarker({
           <span className="text-sm sm:text-xl md:text-2xl">{number}</span>
         )}
         <span
-          className="absolute -bottom-0.5 -right-0.5 h-5 w-5 sm:h-6 sm:w-6 rounded-full border-2 border-white flex items-center justify-center text-[10px] sm:text-xs font-display"
+          className="absolute -bottom-0.5 -right-0.5 h-5 w-5 sm:h-6 sm:w-6 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-display"
           style={{ backgroundColor: color, color: isLight ? "#1a1a1a" : "#ffffff" }}
         >
           {number}
