@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import logo from "@/assets/ararat-porto-logo.jpg";
-import { MatchInfo } from "@/components/MatchInfo";
+
 import { Lineup } from "@/components/Lineup";
 import { Statistics } from "@/components/Statistics";
 
@@ -87,7 +87,7 @@ function Index() {
         </div>
       </header>
 
-      <MatchInfo />
+      
       <Lineup />
       <Statistics />
 
