@@ -45,8 +45,8 @@ const ensureSize = (arr: Player[], n: number): Player[] => {
 };
 
 export function Lineup() {
-  const { match, update, canEdit } = useMatch();
-  const { user } = useAuth();
+  const { match, update, load, canEdit } = useMatch();
+  const { user, signInWithGoogle } = useAuth();
   const size = useMemo(() => parseInt(match.format), [match.format]);
   const positions = FORMATIONS[match.format];
 
@@ -71,6 +71,43 @@ export function Lineup() {
     arr[i] = { ...arr[i], ...patch };
     update(key, arr);
   };
+
+  const claimSlot = async (team: "home" | "away", i: number) => {
+    if (!user) {
+      await signInWithGoogle();
+      return;
+    }
+    if (!match.id) {
+      toast.error("Save the match first before claiming a spot");
+      return;
+    }
+    const { error } = await supabase.rpc("claim_lineup_slot", {
+      _match_id: match.id,
+      _team: team,
+      _slot_index: i,
+    });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    // Refresh the match row to reflect the change
+    const { data, error: fetchErr } = await supabase
+      .from("matches")
+      .select("home_players, away_players")
+      .eq("id", match.id)
+      .single();
+    if (fetchErr || !data) {
+      toast.success("Claimed!");
+      return;
+    }
+    load({
+      ...match,
+      home_players: normalizePlayers(data.home_players),
+      away_players: normalizePlayers(data.away_players),
+    });
+    toast.success("You're on the pitch!");
+  };
+
 
   return (
     <section id="lineup" className="bg-background border-b border-border">
