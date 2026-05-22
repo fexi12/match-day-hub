@@ -79,7 +79,7 @@ export function Lineup() {
 
         {/* Field + Rosters — pitch gets much more room */}
         <div className="mt-10 grid grid-cols-1 lg:grid-cols-[2.2fr_1fr] gap-8">
-          <div className="relative aspect-[4/5] sm:aspect-[3/4] md:aspect-[1/1.05] rounded-xl overflow-hidden shadow-2xl border-2 border-primary">
+          <div className="relative aspect-[2/3] sm:aspect-[3/5] md:aspect-[2/3] rounded-xl overflow-hidden shadow-2xl border-2 border-primary">
             <Pitch />
             {positions.away.map(([x, y], i) => (
               <Jersey key={`a${i}`} x={x} y={y} color={match.away_color} number={i + 1} name={match.away_players[i]} />
