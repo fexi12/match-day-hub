@@ -1,40 +1,28 @@
-import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
-
-type Goal = { id: number; team: "home" | "away"; minute: string; scorer: string; assist: string };
-
-type Stat = { label: string; home: number; away: number };
-
-const DEFAULT: Stat[] = [
-  { label: "Shots on Target", home: 0, away: 0 },
-  { label: "Possession %", home: 50, away: 50 },
-  { label: "Corners", home: 0, away: 0 },
-  { label: "Fouls", home: 0, away: 0 },
-  { label: "Yellow Cards", home: 0, away: 0 },
-];
+import { useMatch, type Goal } from "@/lib/match-store";
 
 export function Statistics() {
-  const [stats, setStats] = useState<Stat[]>(DEFAULT);
-  const [goals, setGoals] = useState<Goal[]>([]);
+  const { match, update } = useMatch();
 
-  const update = (i: number, side: "home" | "away", v: number) => {
-    setStats((s) => s.map((st, idx) => (idx === i ? { ...st, [side]: v } : st)));
+  const updateStat = (i: number, side: "home" | "away", v: number) => {
+    update("stats", match.stats.map((st, idx) => (idx === i ? { ...st, [side]: v } : st)));
   };
 
-  const homeGoals = goals.filter((g) => g.team === "home").length;
-  const awayGoals = goals.filter((g) => g.team === "away").length;
+  const homeGoals = match.goals.filter((g) => g.team === "home").length;
+  const awayGoals = match.goals.filter((g) => g.team === "away").length;
 
   const addGoal = (team: "home" | "away") =>
-    setGoals((g) => [...g, { id: Date.now(), team, minute: "", scorer: "", assist: "" }]);
+    update("goals", [...match.goals, { id: Date.now(), team, minute: "", scorer: "", assist: "" }]);
   const updateGoal = (id: number, patch: Partial<Goal>) =>
-    setGoals((g) => g.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-  const removeGoal = (id: number) => setGoals((g) => g.filter((x) => x.id !== id));
+    update("goals", match.goals.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  const removeGoal = (id: number) =>
+    update("goals", match.goals.filter((x) => x.id !== id));
 
   return (
     <section id="stats" className="bg-primary text-primary-foreground">
-      <div className="mx-auto max-w-6xl px-6 py-20">
+      <div className="mx-auto max-w-7xl px-6 py-20">
         <p className="text-sm tracking-[0.3em] text-accent">Full Time Report</p>
         <h2 className="mt-2 text-5xl md:text-6xl">Statistics</h2>
 
@@ -51,7 +39,7 @@ export function Statistics() {
           </div>
           <div className="text-left">
             <p className="text-xs tracking-[0.25em] text-accent">AWAY</p>
-            <p className="text-2xl md:text-3xl mt-1">Rivals FC</p>
+            <p className="text-2xl md:text-3xl mt-1">{match.opponent}</p>
           </div>
         </div>
 
@@ -59,16 +47,14 @@ export function Statistics() {
         <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
           <GoalColumn
             title="Ararat Porto Goals"
-            team="home"
-            goals={goals.filter((g) => g.team === "home")}
+            goals={match.goals.filter((g) => g.team === "home")}
             onAdd={() => addGoal("home")}
             onUpdate={updateGoal}
             onRemove={removeGoal}
           />
           <GoalColumn
-            title="Rivals FC Goals"
-            team="away"
-            goals={goals.filter((g) => g.team === "away")}
+            title={`${match.opponent} Goals`}
+            goals={match.goals.filter((g) => g.team === "away")}
             onAdd={() => addGoal("away")}
             onUpdate={updateGoal}
             onRemove={removeGoal}
@@ -77,7 +63,7 @@ export function Statistics() {
 
         {/* Stats */}
         <div className="mt-12 flex flex-col gap-6">
-          {stats.map((s, i) => {
+          {match.stats.map((s, i) => {
             const total = s.home + s.away || 1;
             const homePct = (s.home / total) * 100;
             return (
@@ -86,14 +72,14 @@ export function Statistics() {
                   <Input
                     type="number"
                     value={s.home}
-                    onChange={(e) => update(i, "home", Number(e.target.value))}
+                    onChange={(e) => updateStat(i, "home", Number(e.target.value))}
                     className="w-20 h-9 text-center bg-primary border-accent/40 text-primary-foreground"
                   />
                   <p className="font-display tracking-[0.2em] text-accent text-center">{s.label.toUpperCase()}</p>
                   <Input
                     type="number"
                     value={s.away}
-                    onChange={(e) => update(i, "away", Number(e.target.value))}
+                    onChange={(e) => updateStat(i, "away", Number(e.target.value))}
                     className="w-20 h-9 text-center bg-primary border-accent/40 text-primary-foreground"
                   />
                 </div>
@@ -118,7 +104,6 @@ function GoalColumn({
   onRemove,
 }: {
   title: string;
-  team: "home" | "away";
   goals: Goal[];
   onAdd: () => void;
   onUpdate: (id: number, patch: Partial<Goal>) => void;
