@@ -97,6 +97,7 @@ function Index() {
                 <p className="font-semibold">2 hours</p>
               </div>
             </div>
+            </div>
           </div>
         </div>
       </header>
