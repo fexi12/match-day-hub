@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { Save, LogIn, LogOut, ShieldCheck, Menu, X } from "lucide-react";
+import { Save, LogIn, LogOut, ShieldCheck, Menu } from "lucide-react";
 import logo from "@/assets/ararat-porto-logo.png";
 
 import { Lineup } from "@/components/Lineup";
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/")({
       { title: "Ararat Porto FC — Matchday" },
       { name: "description", content: "Matchday hub for Ararat Porto: fixture, lineup, stats and highlights." },
       { property: "og:title", content: "Ararat Porto FC — Matchday" },
-      { property: "og:description", content: "Matchday hub for Ararat Porto." },
+      { property: "og:description", content: "Ararat Porto FC matchday hub." },
     ],
   }),
   component: Index,
@@ -42,13 +42,7 @@ function Page() {
   const { save, saving } = useMatch();
   const { user, signOut, isAdmin } = useAuth();
 
-  const navLinksPublic = (
-    <div className="flex flex-col gap-1">
-      <a href="#lineup" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">SQUAD</a>
-    </div>
-  );
-
-  const navLinksFull = (
+  const navLinks = (
     <div className="flex flex-col gap-1">
       <a href="#lineup" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">SQUAD</a>
       <a href="#stats" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">STATS</a>
@@ -56,8 +50,6 @@ function Page() {
       <a href="/rankings" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">RANKINGS</a>
     </div>
   );
-
-  const navLinks = user ? navLinksFull : navLinksPublic;
 
   const actions = user ? (
     <>
@@ -102,13 +94,9 @@ function Page() {
           <div className="hidden lg:flex items-center gap-2">
             <div className="flex gap-6 text-sm font-semibold tracking-wider mr-4">
               <a href="#lineup" className="hover:text-accent transition">SQUAD</a>
-              {user && (
-                <>
-                  <a href="#stats" className="hover:text-accent transition">STATS</a>
-                  <a href="#videos" className="hover:text-accent transition">VIDEOS</a>
-                  <a href="/rankings" className="hover:text-accent transition">RANKINGS</a>
-                </>
-              )}
+              <a href="#stats" className="hover:text-accent transition">STATS</a>
+              <a href="#videos" className="hover:text-accent transition">VIDEOS</a>
+              <a href="/rankings" className="hover:text-accent transition">RANKINGS</a>
             </div>
             <MatchesDialog />
             {user ? (
@@ -186,9 +174,20 @@ function Page() {
                   </a>
                 </>
               ) : (
-                <a href="#lineup" className="px-6 py-3 bg-primary text-primary-foreground border-2 border-primary">
-                  BUILD THE LINEUP
-                </a>
+                <>
+                  <a href="#lineup" className="px-6 py-3 bg-primary text-primary-foreground border-2 border-primary">
+                    BUILD THE LINEUP
+                  </a>
+                  <a href="#videos" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
+                    HIGHLIGHTS
+                  </a>
+                  <a href="#stats" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
+                    STATS
+                  </a>
+                  <a href="/rankings" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
+                    RANKINGS
+                  </a>
+                </>
               )}
             </div>
           </div>
