@@ -122,6 +122,15 @@ export function Lineup() {
         </p>
         <h2 className="mt-2 text-5xl md:text-6xl">The Squad</h2>
 
+        {user && (
+          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm" style={{ backgroundColor: "oklch(0.65 0.22 35 / 0.08)", borderColor: "oklch(0.65 0.22 35 / 0.25)", color: "oklch(0.65 0.22 35)" }}>
+            <span>💡</span>
+            <span>
+              <strong>Tip:</strong> Click any empty position on the pitch to take that spot — your name and Google photo appear there instantly.
+            </span>
+          </div>
+        )}
+
         <div className="mt-10 flex flex-wrap items-end gap-8">
           <div>
             <p className="mb-3 text-xs tracking-[0.25em] text-muted-foreground">FORMAT</p>
