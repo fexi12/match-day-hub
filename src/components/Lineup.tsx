@@ -63,7 +63,7 @@ export function Lineup() {
           <div>
             <p className="mb-3 text-xs tracking-[0.25em] text-muted-foreground">FORMAT</p>
             <div className="flex gap-2">
-              {(["5v5", "7v7", "8v8"] as Format[]).map((f) => (
+              {(["5v5", "7v7", "8v8", "11v11"] as Format[]).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFormat(f)}
