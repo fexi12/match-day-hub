@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import logo from "@/assets/ararat-porto-logo.jpg";
+import venue from "@/assets/match-venue.jpg";
 
 import { Lineup } from "@/components/Lineup";
 import { Statistics } from "@/components/Statistics";
@@ -58,7 +59,13 @@ function Index() {
               </a>
             </div>
           </div>
-          <div className="w-full md:w-80 border-2 border-primary rounded-xl bg-card p-5 shadow-xl">
+          <div className="w-full md:w-80 border-2 border-primary rounded-xl bg-card shadow-xl overflow-hidden">
+            <img
+              src={venue}
+              alt="Match venue at R. de Alves Redol, Porto"
+              className="h-40 w-full object-cover"
+            />
+            <div className="p-5">
             <p className="text-xs tracking-[0.25em]" style={{ color: "var(--color-ember)" }}>
               MATCHDAY 01
             </p>
