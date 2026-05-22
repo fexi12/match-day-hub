@@ -1,11 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMatch, normalizePlayers, type Format, type Player } from "@/lib/match-store";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { usePlayerAvatars, initialsOf, hueOf } from "@/lib/use-player-avatars";
-import { Upload, X, Mail } from "lucide-react";
 import { toast } from "sonner";
 
 const FORMATIONS: Record<Format, { home: [number, number][]; away: [number, number][] }> = {
@@ -182,8 +181,7 @@ export function Lineup() {
               color={match.home_color}
               size={size}
               players={homePlayers}
-              canUpload={canEdit}
-              resolvePhoto={resolvePhoto}
+              canEdit={canEdit}
               onChange={(i, patch) => setPlayer("home", i, patch)}
             />
             <Roster
@@ -191,10 +189,10 @@ export function Lineup() {
               color={match.away_color}
               size={size}
               players={awayPlayers}
-              canUpload={canEdit}
-              resolvePhoto={resolvePhoto}
+              canEdit={canEdit}
               onChange={(i, patch) => setPlayer("away", i, patch)}
             />
+
             {!user && (
               <p className="text-xs text-muted-foreground italic">
                 Sign in to add players. Each player's Google photo appears once they sign in with the email you set.
@@ -233,16 +231,14 @@ function Roster({
   color,
   size,
   players,
-  canUpload,
-  resolvePhoto,
+  canEdit,
   onChange,
 }: {
   title: string;
   color: string;
   size: number;
   players: Player[];
-  canUpload: boolean;
-  resolvePhoto: (p: Player) => string | undefined;
+  canEdit: boolean;
   onChange: (i: number, patch: Partial<Player>) => void;
 }) {
   return (
@@ -257,8 +253,7 @@ function Roster({
             key={i}
             index={i}
             player={players[i] ?? { name: "" }}
-            photo={resolvePhoto(players[i] ?? { name: "" })}
-            canUpload={canUpload}
+            canEdit={canEdit}
             onChange={(patch) => onChange(i, patch)}
           />
         ))}
@@ -288,109 +283,29 @@ function InitialsAvatar({ name, size = "md" }: { name: string; size?: "sm" | "md
 function PlayerRow({
   index,
   player,
-  photo,
-  canUpload,
+  canEdit,
   onChange,
 }: {
   index: number;
   player: Player;
-  photo: string | undefined;
-  canUpload: boolean;
+  canEdit: boolean;
   onChange: (patch: Partial<Player>) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const upload = async (file: File) => {
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${file.name.replace(/[^a-z0-9.\-_]/gi, "_")}`;
-    const { error } = await supabase.storage.from("player-photos").upload(path, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    const { data } = supabase.storage.from("player-photos").getPublicUrl(path);
-    onChange({ photo_url: data.publicUrl });
-  };
-
-  const promptEmail = () => {
-    const current = player.email ?? "";
-    const next = window.prompt(
-      "Google email for this player (their Google photo will appear once they sign in):",
-      current,
-    );
-    if (next === null) return;
-    const trimmed = next.trim();
-    onChange({ email: trimmed || undefined });
-  };
-
   return (
     <div className="flex items-center gap-2">
       <span className="font-display text-lg w-7 text-muted-foreground">{index + 1}</span>
-      <div className="h-9 w-9 shrink-0 rounded-full border-2 border-border overflow-hidden bg-muted">
-        {photo ? (
-          <img src={photo} alt={player.name || `Player ${index + 1}`} className="h-full w-full object-cover" />
-        ) : player.name ? (
-          <InitialsAvatar name={player.name} size="sm" />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center text-muted-foreground text-xs font-display">+</div>
-        )}
-      </div>
       <Input
         value={player.name ?? ""}
         onChange={(e) => onChange({ name: e.target.value })}
         placeholder={`Add player ${index + 1}`}
         className="h-9 flex-1"
-        readOnly={!canUpload}
-        disabled={!canUpload}
-      />
-      {canUpload && (
-        <>
-          <button
-            type="button"
-            onClick={promptEmail}
-            title={player.email ? `Linked to ${player.email}` : "Link Google email"}
-            className={`p-1.5 rounded border transition ${
-              player.email ? "border-primary text-primary" : "border-border text-muted-foreground hover:border-primary"
-            }`}
-          >
-            <Mail className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            title="Upload custom photo"
-            className="p-1.5 rounded border border-border text-muted-foreground hover:border-primary transition"
-          >
-            <Upload className="h-3.5 w-3.5" />
-          </button>
-        </>
-      )}
-      {player.photo_url && canUpload && (
-        <button
-          type="button"
-          onClick={() => onChange({ photo_url: undefined })}
-          className="text-muted-foreground hover:text-destructive p-1"
-          title="Remove custom photo"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      )}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) upload(f);
-          e.target.value = "";
-        }}
+        readOnly={!canEdit}
+        disabled={!canEdit}
       />
     </div>
   );
 }
+
 
 function Pitch() {
   return (
