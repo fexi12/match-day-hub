@@ -423,6 +423,9 @@ function PlayerMarker({
   number,
   player,
   photo,
+  onClaim,
+  userEmail,
+  isSignedIn,
 }: {
   x: number;
   y: number;
@@ -430,16 +433,28 @@ function PlayerMarker({
   number: number;
   player: Player;
   photo: string | undefined;
+  onClaim: () => void | Promise<void>;
+  userEmail: string | null;
+  isSignedIn: boolean;
 }) {
   const isLight = ["#f0e8d6", "#ffffff", "#e0b441", "#5cbdb9"].includes(color);
   const name = player?.name;
-  return (
+  const isEmpty = !name && !player?.email;
+  const isMine = !!userEmail && !!player?.email && player.email.toLowerCase() === userEmail.toLowerCase();
+  const [open, setOpen] = useState(false);
+
+  const marker = (
     <div
       className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
       style={{ left: `${x}%`, top: `${y}%` }}
     >
-      <div
-        className="relative h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full border-2 shadow-lg overflow-hidden flex items-center justify-center font-display"
+      <button
+        type="button"
+        onClick={isEmpty ? () => setOpen(true) : undefined}
+        disabled={!isEmpty}
+        className={`relative h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full border-2 shadow-lg overflow-hidden flex items-center justify-center font-display transition ${
+          isEmpty ? "cursor-pointer hover:scale-110 hover:ring-2 hover:ring-primary/60" : "cursor-default"
+        } ${isMine ? "ring-2 ring-primary" : ""}`}
         style={{
           backgroundColor: color,
           color: isLight ? "#1a1a1a" : "#ffffff",
@@ -459,7 +474,7 @@ function PlayerMarker({
         >
           {number}
         </span>
-      </div>
+      </button>
       {name && (
         <span className="mt-1 px-2 py-0.5 text-[11px] font-semibold bg-primary text-primary-foreground rounded whitespace-nowrap max-w-[120px] truncate">
           {name}
@@ -467,4 +482,44 @@ function PlayerMarker({
       )}
     </div>
   );
+
+  if (!isEmpty) return marker;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>{marker}</PopoverTrigger>
+      <PopoverContent className="w-56 p-3" side="top">
+        {isSignedIn ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-muted-foreground">Take position #{number}</p>
+            <button
+              type="button"
+              onClick={async () => {
+                setOpen(false);
+                await onClaim();
+              }}
+              className="w-full px-3 py-2 rounded bg-primary text-primary-foreground font-display text-sm hover:opacity-90 transition"
+            >
+              Place me here
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-muted-foreground">Sign in to claim this spot with your Google photo.</p>
+            <button
+              type="button"
+              onClick={async () => {
+                setOpen(false);
+                await onClaim();
+              }}
+              className="w-full px-3 py-2 rounded bg-primary text-primary-foreground font-display text-sm hover:opacity-90 transition"
+            >
+              Sign in with Google
+            </button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
 }
+
