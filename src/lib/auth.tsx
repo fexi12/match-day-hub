@@ -45,8 +45,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const admin = roles.has("admin");
         setIsAdmin(admin);
         setIsApproved(admin || roles.has("moderator"));
-        console.log("[auth] resolved", { isAdmin: admin, isApproved: admin || roles.has("moderator") });
       });
+
+    // Save Google profile photo so squads can show it by email
+    const meta = session?.user?.user_metadata as { avatar_url?: string; picture?: string } | undefined;
+    const email = session?.user?.email;
+    const avatar = meta?.avatar_url ?? meta?.picture;
+    if (email && avatar) {
+      supabase.from("player_avatars")
+        .upsert({ email: email.toLowerCase(), avatar_url: avatar, updated_at: new Date().toISOString() })
+        .then(({ error }) => { if (error) console.warn("[auth] avatar upsert", error); });
+    }
   }, [session?.user?.id]);
 
   const signInWithGoogle = async () => {
