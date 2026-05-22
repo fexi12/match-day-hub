@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { Save } from "lucide-react";
+import { Save, LogIn, LogOut } from "lucide-react";
 import logo from "@/assets/ararat-porto-logo.png";
 
 import { Lineup } from "@/components/Lineup";
@@ -11,6 +11,7 @@ import { Videos } from "@/components/Videos";
 import { MatchHero } from "@/components/MatchHero";
 import { MatchesDialog } from "@/components/MatchesDialog";
 import { MatchProvider, useMatch } from "@/lib/match-store";
+import { AuthProvider, useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,15 +27,18 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   return (
-    <MatchProvider>
-      <Toaster richColors position="top-center" />
-      <Page />
-    </MatchProvider>
+    <AuthProvider>
+      <MatchProvider>
+        <Toaster richColors position="top-center" />
+        <Page />
+      </MatchProvider>
+    </AuthProvider>
   );
 }
 
 function Page() {
   const { save, saving } = useMatch();
+  const { user, signOut } = useAuth();
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -59,9 +63,22 @@ function Page() {
               <a href="#videos" className="hover:text-accent transition">VIDEOS</a>
             </div>
             <MatchesDialog />
-            <Button onClick={save} disabled={saving} className="font-display tracking-wider">
-              <Save className="h-4 w-4 mr-2" /> {saving ? "SAVING…" : "SAVE"}
-            </Button>
+            {user ? (
+              <>
+                <Button onClick={save} disabled={saving} className="font-display tracking-wider">
+                  <Save className="h-4 w-4 mr-2" /> {saving ? "SAVING…" : "SAVE"}
+                </Button>
+                <Button onClick={signOut} variant="outline" className="font-display tracking-wider" title={user.email ?? ""}>
+                  <LogOut className="h-4 w-4 mr-2" /> SIGN OUT
+                </Button>
+              </>
+            ) : (
+              <Button asChild className="font-display tracking-wider">
+                <Link to="/login">
+                  <LogIn className="h-4 w-4 mr-2" /> SIGN IN
+                </Link>
+              </Button>
+            )}
           </div>
         </nav>
 

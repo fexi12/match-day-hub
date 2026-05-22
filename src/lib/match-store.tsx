@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export type Format = "5v5" | "7v7" | "8v8" | "11v11";
+export type Player = { name: string; photo_url?: string };
 export type Stat = { label: string; home: number; away: number };
 export type Goal = { id: number; team: "home" | "away"; minute: string; scorer: string; assist: string };
 export type Video = { id: number; title: string; url: string };
@@ -18,8 +19,8 @@ export type MatchState = {
   format: Format;
   home_color: string;
   away_color: string;
-  home_players: string[];
-  away_players: string[];
+  home_players: Player[];
+  away_players: Player[];
   stats: Stat[];
   goals: Goal[];
   videos: Video[];
@@ -50,6 +51,21 @@ export const defaultMatch = (): MatchState => ({
   goals: [],
   videos: [],
 });
+
+export function normalizePlayers(raw: unknown): Player[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((p) => {
+    if (typeof p === "string") return { name: p };
+    if (p && typeof p === "object") {
+      const obj = p as Record<string, unknown>;
+      return {
+        name: typeof obj.name === "string" ? obj.name : "",
+        photo_url: typeof obj.photo_url === "string" ? obj.photo_url : undefined,
+      };
+    }
+    return { name: "" };
+  });
+}
 
 type Ctx = {
   match: MatchState;

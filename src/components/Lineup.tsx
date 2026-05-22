@@ -1,6 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Input } from "@/components/ui/input";
-import { useMatch, type Format } from "@/lib/match-store";
+import { useMatch, type Format, type Player } from "@/lib/match-store";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import { ImagePlus, X } from "lucide-react";
+import { toast } from "sonner";
 
 const FORMATIONS: Record<Format, { home: [number, number][]; away: [number, number][] }> = {
   "5v5": {
@@ -32,17 +36,27 @@ const SHIRT_COLORS = [
   { name: "Sky", value: "#5cbdb9" },
 ];
 
+const ensureSize = (arr: Player[], n: number): Player[] => {
+  const out = [...arr];
+  while (out.length < n) out.push({ name: "" });
+  return out.slice(0, n);
+};
+
 export function Lineup() {
   const { match, update } = useMatch();
+  const { user } = useAuth();
   const size = useMemo(() => parseInt(match.format), [match.format]);
   const positions = FORMATIONS[match.format];
 
-  const setName = (team: "home" | "away", i: number, v: string) => {
+  const setPlayer = (team: "home" | "away", i: number, patch: Partial<Player>) => {
     const key = team === "home" ? "home_players" : "away_players";
-    const arr = [...match[key]];
-    arr[i] = v;
+    const arr = ensureSize(match[key], size);
+    arr[i] = { ...arr[i], ...patch };
     update(key, arr);
   };
+
+  const homePlayers = ensureSize(match.home_players, size);
+  const awayPlayers = ensureSize(match.away_players, size);
 
   return (
     <section id="lineup" className="bg-background border-b border-border">
@@ -52,7 +66,6 @@ export function Lineup() {
         </p>
         <h2 className="mt-2 text-5xl md:text-6xl">The Squad</h2>
 
-        {/* Controls */}
         <div className="mt-10 flex flex-wrap items-end gap-8">
           <div>
             <p className="mb-3 text-xs tracking-[0.25em] text-muted-foreground">FORMAT</p>
@@ -77,15 +90,14 @@ export function Lineup() {
           <ColorPicker label="AWAY KIT" value={match.away_color} onChange={(v) => update("away_color", v)} />
         </div>
 
-        {/* Field + Rosters — pitch gets much more room */}
         <div className="mt-10 grid grid-cols-1 lg:grid-cols-[2.2fr_1fr] gap-8">
           <div className="relative aspect-[2/3] sm:aspect-[3/5] md:aspect-[2/3] rounded-xl overflow-hidden shadow-2xl border-2 border-primary">
             <Pitch />
             {positions.away.map(([x, y], i) => (
-              <Jersey key={`a${i}`} x={x} y={y} color={match.away_color} number={i + 1} name={match.away_players[i]} />
+              <PlayerMarker key={`a${i}`} x={x} y={y} color={match.away_color} number={i + 1} player={awayPlayers[i]} />
             ))}
             {positions.home.map(([x, y], i) => (
-              <Jersey key={`h${i}`} x={x} y={y} color={match.home_color} number={i + 1} name={match.home_players[i]} />
+              <PlayerMarker key={`h${i}`} x={x} y={y} color={match.home_color} number={i + 1} player={homePlayers[i]} />
             ))}
           </div>
 
@@ -94,16 +106,23 @@ export function Lineup() {
               title="Home Team"
               color={match.home_color}
               size={size}
-              names={match.home_players}
-              onChange={(i, v) => setName("home", i, v)}
+              players={homePlayers}
+              canUpload={!!user}
+              onChange={(i, patch) => setPlayer("home", i, patch)}
             />
             <Roster
               title={match.opponent || "Away Team"}
               color={match.away_color}
               size={size}
-              names={match.away_players}
-              onChange={(i, v) => setName("away", i, v)}
+              players={awayPlayers}
+              canUpload={!!user}
+              onChange={(i, patch) => setPlayer("away", i, patch)}
             />
+            {!user && (
+              <p className="text-xs text-muted-foreground italic">
+                Sign in to upload player photos.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -136,14 +155,16 @@ function Roster({
   title,
   color,
   size,
-  names,
+  players,
+  canUpload,
   onChange,
 }: {
   title: string;
   color: string;
   size: number;
-  names: string[];
-  onChange: (i: number, v: string) => void;
+  players: Player[];
+  canUpload: boolean;
+  onChange: (i: number, patch: Partial<Player>) => void;
 }) {
   return (
     <div className="border-2 border-primary rounded-xl p-5 bg-card">
@@ -153,17 +174,89 @@ function Roster({
       </div>
       <div className="flex flex-col gap-2">
         {Array.from({ length: size }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <span className="font-display text-lg w-7 text-muted-foreground">{i + 1}</span>
-            <Input
-              value={names[i] ?? ""}
-              onChange={(e) => onChange(i, e.target.value)}
-              placeholder={`Player ${i + 1}`}
-              className="h-9"
-            />
-          </div>
+          <PlayerRow
+            key={i}
+            index={i}
+            player={players[i] ?? { name: "" }}
+            canUpload={canUpload}
+            onChange={(patch) => onChange(i, patch)}
+          />
         ))}
       </div>
+    </div>
+  );
+}
+
+function PlayerRow({
+  index,
+  player,
+  canUpload,
+  onChange,
+}: {
+  index: number;
+  player: Player;
+  canUpload: boolean;
+  onChange: (patch: Partial<Player>) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const upload = async (file: File) => {
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${file.name.replace(/[^a-z0-9.\-_]/gi, "_")}`;
+    const { error } = await supabase.storage.from("player-photos").upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+    });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const { data } = supabase.storage.from("player-photos").getPublicUrl(path);
+    onChange({ photo_url: data.publicUrl });
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="font-display text-lg w-7 text-muted-foreground">{index + 1}</span>
+      <button
+        type="button"
+        onClick={() => canUpload && inputRef.current?.click()}
+        disabled={!canUpload}
+        title={canUpload ? "Upload photo" : "Sign in to upload"}
+        className="h-9 w-9 shrink-0 rounded-full border-2 border-border overflow-hidden flex items-center justify-center bg-muted hover:border-primary transition disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {player.photo_url ? (
+          <img src={player.photo_url} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <ImagePlus className="h-4 w-4 text-muted-foreground" />
+        )}
+      </button>
+      <Input
+        value={player.name ?? ""}
+        onChange={(e) => onChange({ name: e.target.value })}
+        placeholder={`Player ${index + 1}`}
+        className="h-9 flex-1"
+      />
+      {player.photo_url && (
+        <button
+          type="button"
+          onClick={() => onChange({ photo_url: undefined })}
+          className="text-muted-foreground hover:text-destructive p-1"
+          title="Remove photo"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) upload(f);
+          e.target.value = "";
+        }}
+      />
     </div>
   );
 }
@@ -192,21 +285,51 @@ function Pitch() {
   );
 }
 
-function Jersey({ x, y, color, number, name }: { x: number; y: number; color: string; number: number; name?: string }) {
+function PlayerMarker({
+  x,
+  y,
+  color,
+  number,
+  player,
+}: {
+  x: number;
+  y: number;
+  color: string;
+  number: number;
+  player: Player;
+}) {
   const isLight = ["#f0e8d6", "#ffffff", "#e0b441", "#5cbdb9"].includes(color);
+  const name = player?.name;
+  const photo = player?.photo_url;
   return (
     <div
       className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
       style={{ left: `${x}%`, top: `${y}%` }}
     >
       <div
-        className="h-8 w-8 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-full border-2 border-white flex items-center justify-center font-display text-sm sm:text-xl md:text-2xl shadow-lg"
-        style={{ backgroundColor: color, color: isLight ? "#1a1a1a" : "#ffffff" }}
+        className="relative h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full border-2 shadow-lg overflow-hidden flex items-center justify-center font-display"
+        style={{
+          backgroundColor: color,
+          color: isLight ? "#1a1a1a" : "#ffffff",
+          borderColor: "#ffffff",
+        }}
       >
-        {number}
+        {photo ? (
+          <>
+            <img src={photo} alt={name ?? `Player ${number}`} className="absolute inset-0 h-full w-full object-cover" />
+            <span
+              className="absolute -bottom-0.5 -right-0.5 h-5 w-5 sm:h-6 sm:w-6 rounded-full border-2 border-white flex items-center justify-center text-[10px] sm:text-xs font-display"
+              style={{ backgroundColor: color, color: isLight ? "#1a1a1a" : "#ffffff" }}
+            >
+              {number}
+            </span>
+          </>
+        ) : (
+          <span className="text-sm sm:text-xl md:text-2xl">{number}</span>
+        )}
       </div>
       {name && (
-        <span className="mt-1 px-2 py-0.5 text-[11px] font-semibold bg-primary text-primary-foreground rounded whitespace-nowrap max-w-[110px] truncate">
+        <span className="mt-1 px-2 py-0.5 text-[11px] font-semibold bg-primary text-primary-foreground rounded whitespace-nowrap max-w-[120px] truncate">
           {name}
         </span>
       )}
