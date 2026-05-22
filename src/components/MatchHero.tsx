@@ -1,6 +1,8 @@
 import { Input } from "@/components/ui/input";
 import { useMatch } from "@/lib/match-store";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import venue from "@/assets/match-venue.jpg";
+import type { Format } from "@/lib/match-store";
 
 export function MatchHero() {
   const { match, update, canEdit } = useMatch();
@@ -57,6 +59,30 @@ export function MatchHero() {
               className="h-7 px-1"
             />
           </Field>
+          <div>
+            <p className="text-[10px] tracking-[0.2em] text-muted-foreground">FORMAT</p>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="mt-1">
+                    <select
+                      value={match.format}
+                      onChange={(e) => update("format", e.target.value as Format)}
+                      className="h-7 px-1 w-full bg-background border border-border rounded text-xs font-display cursor-help"
+                    >
+                      <option value="5v5">5 v 5</option>
+                      <option value="7v7">7 v 7</option>
+                      <option value="8v8">8 v 8</option>
+                      <option value="11v11">11 v 11</option>
+                    </select>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[200px] text-center">
+                  <p>Select the match format. This controls how many positions appear on the pitch.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <Field label="MAP">
             <a
               href={mapsUrl}
