@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useMatch, normalizePlayers, type Format, type Player } from "@/lib/match-store";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -131,25 +132,37 @@ export function Lineup() {
           </div>
         )}
 
-        <div className="mt-10 flex flex-wrap items-end gap-8">
+        <div className="mt-6 flex items-center gap-4">
           <div>
-            <p className="mb-3 text-xs tracking-[0.25em] text-muted-foreground">FORMAT</p>
-            <div className="flex flex-wrap gap-2">
-              {(["5v5", "7v7", "8v8", "11v11"] as Format[]).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => update("format", f)}
-                  disabled={!canEdit}
-                  className={`px-5 py-2 font-display text-lg border-2 transition disabled:opacity-60 disabled:cursor-not-allowed ${
-                    match.format === f
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background border-border hover:border-primary"
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
+            {/* Format tooltip */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <p className="mb-3 text-xs tracking-[0.25em] text-muted-foreground cursor-help">FORMAT ⓘ</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(["5v5", "7v7", "8v8", "11v11"] as Format[]).map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => update("format", f)}
+                        disabled={!canEdit}
+                        className={`px-5 py-2 font-display text-lg border-2 transition disabled:opacity-60 disabled:cursor-not-allowed ${
+                          match.format === f
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background border-border hover:border-primary"
+                        }`}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[200px] text-center">
+                <p>Click a format to switch the pitch layout. Changing format resets the number of positions on the field.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           </div>
 
           <ColorPicker label="HOME KIT" value={match.home_color} onChange={(v) => update("home_color", v)} />
