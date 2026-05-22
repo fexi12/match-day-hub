@@ -9,6 +9,7 @@ import { Jerseys } from "@/components/Jerseys";
 import { Statistics } from "@/components/Statistics";
 import { Videos } from "@/components/Videos";
 import { MatchHero } from "@/components/MatchHero";
+import { Weather } from "@/components/Weather";
 import { MatchesDialog } from "@/components/MatchesDialog";
 import { MatchProvider, useMatch } from "@/lib/match-store";
 import { AuthProvider, useAuth } from "@/lib/auth";
@@ -114,6 +115,7 @@ function Page() {
       </header>
 
       <Lineup />
+      <Weather />
       <Statistics />
       <Videos />
       <Jerseys />

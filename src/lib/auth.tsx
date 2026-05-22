@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!uid) { setIsAdmin(false); setIsApproved(false); return; }
     supabase.from("user_roles").select("role").eq("user_id", uid)
       .then(({ data, error }) => {
-        console.log("[auth] roles query", { uid, data, error });
+        
         const roles = new Set((data ?? []).map((r) => r.role));
         const admin = roles.has("admin");
         setIsAdmin(admin);

@@ -74,12 +74,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Lovable App" },
       { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { name: "author", content: "Ararat Porto FC" },
+      { property: "og:title", content: "Ararat Porto FC — Matchday" },
+      { property: "og:description", content: "Matchday hub for Ararat Porto FC." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:site", content: "@AraratPortoFC" },
+      { property: "og:image", content: "/ararat-porto-logo.png" },
     ],
     links: [
       {

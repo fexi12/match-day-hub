@@ -1,11 +1,19 @@
 import { MapPin, Clock, Timer, Calendar } from "lucide-react";
+import { useMatch } from "@/lib/match-store";
+import { format, parseISO } from "date-fns";
 
 export function MatchInfo() {
+  const { match } = useMatch();
+
+  const dateDisplay = match.match_date
+    ? format(parseISO(match.match_date), "EEEE, d MMMM yyyy")
+    : "TBD";
+
   const items = [
-    { icon: Calendar, label: "Date", value: "Saturday, 30 May 2026" },
-    { icon: MapPin, label: "Location", value: "Campo do Dragão · Porto" },
-    { icon: Clock, label: "Kick-off", value: "19:30" },
-    { icon: Timer, label: "Duration", value: "90 minutes" },
+    { icon: Calendar, label: "Date", value: dateDisplay },
+    { icon: MapPin, label: "Location", value: match.location || "TBD" },
+    { icon: Clock, label: "Kick-off", value: match.kickoff || "TBD" },
+    { icon: Timer, label: "Duration", value: match.duration || "TBD" },
   ];
 
   return (
@@ -13,11 +21,14 @@ export function MatchInfo() {
       <div className="mx-auto max-w-6xl px-6 py-20">
         <div className="mb-12 flex items-end justify-between gap-6 flex-wrap">
           <div>
-            <p className="text-sm tracking-[0.3em] text-accent">Matchday 01</p>
+            <p className="text-sm tracking-[0.3em] text-accent">{match.name}</p>
             <h2 className="mt-2 text-5xl md:text-6xl text-primary-foreground">The Fixture</h2>
           </div>
           <div className="text-right">
-            <p className="text-3xl font-bold">Ararat Porto <span className="text-accent">vs</span> Guest FC</p>
+            <p className="text-3xl font-bold">
+              Ararat Porto <span className="text-accent">vs</span>{" "}
+              {match.opponent}
+            </p>
           </div>
         </div>
 
