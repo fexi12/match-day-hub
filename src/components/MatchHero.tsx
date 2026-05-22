@@ -3,7 +3,8 @@ import { useMatch } from "@/lib/match-store";
 import venue from "@/assets/match-venue.jpg";
 
 export function MatchHero() {
-  const { match, update } = useMatch();
+  const { match, update, canEdit } = useMatch();
+  const ro = !canEdit;
 
   const mapsUrl = match.location
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(match.location)}`
