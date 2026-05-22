@@ -42,15 +42,22 @@ function Page() {
   const { save, saving } = useMatch();
   const { user, signOut, isAdmin } = useAuth();
 
-  const navLinks = (
+  const navLinksPublic = (
     <div className="flex flex-col gap-1">
       <a href="#lineup" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">SQUAD</a>
-      <a href="#jerseys" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">KIT</a>
+    </div>
+  );
+
+  const navLinksFull = (
+    <div className="flex flex-col gap-1">
+      <a href="#lineup" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">SQUAD</a>
       <a href="#stats" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">STATS</a>
       <a href="#videos" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">VIDEOS</a>
       <a href="/rankings" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">RANKINGS</a>
     </div>
   );
+
+  const navLinks = user ? navLinksFull : navLinksPublic;
 
   const actions = user ? (
     <>
@@ -95,10 +102,13 @@ function Page() {
           <div className="hidden lg:flex items-center gap-2">
             <div className="flex gap-6 text-sm font-semibold tracking-wider mr-4">
               <a href="#lineup" className="hover:text-accent transition">SQUAD</a>
-              <a href="#jerseys" className="hover:text-accent transition">KIT</a>
-              <a href="#stats" className="hover:text-accent transition">STATS</a>
-              <a href="#videos" className="hover:text-accent transition">VIDEOS</a>
-              <a href="/rankings" className="hover:text-accent transition">RANKINGS</a>
+              {user && (
+                <>
+                  <a href="#stats" className="hover:text-accent transition">STATS</a>
+                  <a href="#videos" className="hover:text-accent transition">VIDEOS</a>
+                  <a href="/rankings" className="hover:text-accent transition">RANKINGS</a>
+                </>
+              )}
             </div>
             <MatchesDialog />
             {user ? (
@@ -166,23 +176,35 @@ function Page() {
               track every play, and keep every match on record.
             </p>
             <div className="mt-10 flex flex-wrap gap-3 font-display tracking-wider">
-              <a href="#lineup" className="px-6 py-3 bg-primary text-primary-foreground border-2 border-primary">
-                BUILD THE LINEUP
-              </a>
-              <a href="#videos" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
-                HIGHLIGHTS
-              </a>
+              {user ? (
+                <>
+                  <a href="#lineup" className="px-6 py-3 bg-primary text-primary-foreground border-2 border-primary">
+                    BUILD THE LINEUP
+                  </a>
+                  <a href="#videos" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
+                    HIGHLIGHTS
+                  </a>
+                </>
+              ) : (
+                <a href="#lineup" className="px-6 py-3 bg-primary text-primary-foreground border-2 border-primary">
+                  BUILD THE LINEUP
+                </a>
+              )}
             </div>
           </div>
-          <MatchHero />
+          {user && <MatchHero />}
         </div>
       </header>
 
       <Lineup />
-      <Weather />
-      <Statistics />
-      <Videos />
-      <Jerseys />
+      {user && (
+        <>
+          <Weather />
+          <Statistics />
+          <Videos />
+          <Jerseys />
+        </>
+      )}
 
       <footer className="bg-background py-10 text-center text-sm text-muted-foreground">
         <p>© Ararat Porto FC · Forjado no Porto</p>
