@@ -26,7 +26,8 @@ function toEmbed(url: string): string | null {
 }
 
 export function Videos() {
-  const { match, update } = useMatch();
+  const { match, update, canEdit } = useMatch();
+  const ro = !canEdit;
 
   const add = () =>
     update("videos", [...match.videos, { id: Date.now(), title: "", url: "" }]);
@@ -45,7 +46,7 @@ export function Videos() {
             </p>
             <h2 className="mt-2 text-5xl md:text-6xl">Video Highlights</h2>
           </div>
-          <Button onClick={add} className="font-display tracking-wider">
+          <Button onClick={add} disabled={ro} className="font-display tracking-wider">
             <Plus className="h-4 w-4 mr-1" /> ADD VIDEO
           </Button>
         </div>
@@ -80,16 +81,21 @@ export function Videos() {
                     placeholder="Title (e.g. Opening goal)"
                     value={v.title}
                     onChange={(e) => edit(v.id, { title: e.target.value })}
+                    readOnly={ro}
+                    disabled={ro}
                   />
                   <div className="flex gap-2">
                     <Input
                       placeholder="YouTube or Vimeo URL"
                       value={v.url}
                       onChange={(e) => edit(v.id, { url: e.target.value })}
+                      readOnly={ro}
+                      disabled={ro}
                     />
                     <button
                       onClick={() => remove(v.id)}
-                      className="px-3 text-muted-foreground hover:text-destructive"
+                      disabled={ro}
+                      className="px-3 text-muted-foreground hover:text-destructive disabled:opacity-40"
                       aria-label="Remove video"
                     >
                       <Trash2 className="h-4 w-4" />

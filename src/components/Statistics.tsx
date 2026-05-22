@@ -4,7 +4,8 @@ import { Plus, Trash2 } from "lucide-react";
 import { useMatch, type Goal } from "@/lib/match-store";
 
 export function Statistics() {
-  const { match, update } = useMatch();
+  const { match, update, canEdit } = useMatch();
+  const ro = !canEdit;
 
   const updateStat = (i: number, side: "home" | "away", v: number) => {
     update("stats", match.stats.map((st, idx) => (idx === i ? { ...st, [side]: v } : st)));
@@ -51,6 +52,7 @@ export function Statistics() {
             onAdd={() => addGoal("home")}
             onUpdate={updateGoal}
             onRemove={removeGoal}
+            ro={ro}
           />
           <GoalColumn
             title={`${match.opponent} Goals`}
@@ -58,6 +60,7 @@ export function Statistics() {
             onAdd={() => addGoal("away")}
             onUpdate={updateGoal}
             onRemove={removeGoal}
+            ro={ro}
           />
         </div>
 
@@ -73,6 +76,8 @@ export function Statistics() {
                     type="number"
                     value={s.home}
                     onChange={(e) => updateStat(i, "home", Number(e.target.value))}
+                    readOnly={ro}
+                    disabled={ro}
                     className="w-20 h-9 text-center bg-primary border-accent/40 text-primary-foreground"
                   />
                   <p className="font-display tracking-[0.2em] text-accent text-center">{s.label.toUpperCase()}</p>
@@ -80,6 +85,8 @@ export function Statistics() {
                     type="number"
                     value={s.away}
                     onChange={(e) => updateStat(i, "away", Number(e.target.value))}
+                    readOnly={ro}
+                    disabled={ro}
                     className="w-20 h-9 text-center bg-primary border-accent/40 text-primary-foreground"
                   />
                 </div>
@@ -102,12 +109,14 @@ function GoalColumn({
   onAdd,
   onUpdate,
   onRemove,
+  ro,
 }: {
   title: string;
   goals: Goal[];
   onAdd: () => void;
   onUpdate: (id: number, patch: Partial<Goal>) => void;
   onRemove: (id: number) => void;
+  ro: boolean;
 }) {
   return (
     <div className="border-2 border-accent/40 rounded-xl p-5">
@@ -116,6 +125,7 @@ function GoalColumn({
         <Button
           size="sm"
           onClick={onAdd}
+          disabled={ro}
           className="bg-accent text-accent-foreground hover:bg-accent/90 font-display tracking-wider"
         >
           <Plus className="h-4 w-4 mr-1" /> GOAL
@@ -133,23 +143,30 @@ function GoalColumn({
               placeholder="min"
               value={g.minute}
               onChange={(e) => onUpdate(g.id, { minute: e.target.value })}
+              readOnly={ro}
+              disabled={ro}
               className="h-9 text-center bg-primary border-accent/40 text-primary-foreground"
             />
             <Input
               placeholder="Scorer"
               value={g.scorer}
               onChange={(e) => onUpdate(g.id, { scorer: e.target.value })}
+              readOnly={ro}
+              disabled={ro}
               className="h-9 bg-primary border-accent/40 text-primary-foreground"
             />
             <Input
               placeholder="Assist"
               value={g.assist}
               onChange={(e) => onUpdate(g.id, { assist: e.target.value })}
+              readOnly={ro}
+              disabled={ro}
               className="h-9 bg-primary border-accent/40 text-primary-foreground"
             />
             <button
               onClick={() => onRemove(g.id)}
-              className="text-primary-foreground/60 hover:text-destructive p-2"
+              disabled={ro}
+              className="text-primary-foreground/60 hover:text-destructive p-2 disabled:opacity-40"
               aria-label="Remove goal"
             >
               <Trash2 className="h-4 w-4" />
