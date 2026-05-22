@@ -87,7 +87,7 @@ function Index() {
         </div>
       </header>
 
-      <MatchInfo />
+      
       <Lineup />
       <Statistics />
 

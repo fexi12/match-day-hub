@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type Format = "5v5" | "7v7" | "8v8";
+type Format = "5v5" | "7v7" | "8v8" | "11v11";
 
 const FORMATIONS: Record<Format, { home: [number, number][]; away: [number, number][] }> = {
   "5v5": {
@@ -16,6 +16,10 @@ const FORMATIONS: Record<Format, { home: [number, number][]; away: [number, numb
   "8v8": {
     home: [[50, 94], [18, 78], [40, 78], [60, 78], [82, 78], [30, 58], [50, 58], [70, 58]],
     away: [[50, 6], [18, 22], [40, 22], [60, 22], [82, 22], [30, 42], [50, 42], [70, 42]],
+  },
+  "11v11": {
+    home: [[50, 95], [15, 80], [38, 80], [62, 80], [85, 80], [25, 62], [50, 62], [75, 62], [30, 45], [50, 45], [70, 45]],
+    away: [[50, 5], [15, 20], [38, 20], [62, 20], [85, 20], [25, 38], [50, 38], [75, 38], [30, 55], [50, 55], [70, 55]],
   },
 };
 
