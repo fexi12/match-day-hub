@@ -5,6 +5,7 @@ import { Save } from "lucide-react";
 import logo from "@/assets/ararat-porto-logo.png";
 import jersey from "@/assets/ararat-porto-jersey.png";
 import { Lineup } from "@/components/Lineup";
+import { Jerseys } from "@/components/Jerseys";
 import { Statistics } from "@/components/Statistics";
 import { Videos } from "@/components/Videos";
 import { MatchHero } from "@/components/MatchHero";
@@ -53,6 +54,7 @@ function Page() {
           <div className="flex items-center gap-2">
             <div className="hidden md:flex gap-6 text-sm font-semibold tracking-wider mr-4">
               <a href="#lineup" className="hover:text-accent transition">SQUAD</a>
+              <a href="#jerseys" className="hover:text-accent transition">KIT</a>
               <a href="#stats" className="hover:text-accent transition">STATS</a>
               <a href="#videos" className="hover:text-accent transition">VIDEOS</a>
             </div>
@@ -102,6 +104,7 @@ function Page() {
       </header>
 
       <Lineup />
+      <Jerseys />
       <Statistics />
       <Videos />
 
