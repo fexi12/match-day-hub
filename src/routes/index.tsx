@@ -72,15 +72,22 @@ function Index() {
               </div>
               <div>
                 <p className="text-[10px] tracking-[0.2em] text-muted-foreground">KICK-OFF</p>
-                <p className="font-semibold">19:30</p>
+                <p className="font-semibold">19:00</p>
               </div>
               <div className="col-span-2">
                 <p className="text-[10px] tracking-[0.2em] text-muted-foreground">LOCATION</p>
-                <p className="font-semibold">Campo do Dragão · Porto</p>
+                <a
+                  href="https://www.google.com/maps/search/?api=1&query=R.+de+Alves+Redol+292,+4050-042+Porto"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold hover:text-accent transition"
+                >
+                  R. de Alves Redol 292, 4050-042 Porto
+                </a>
               </div>
               <div>
                 <p className="text-[10px] tracking-[0.2em] text-muted-foreground">DURATION</p>
-                <p className="font-semibold">90 min</p>
+                <p className="font-semibold">2 hours</p>
               </div>
             </div>
           </div>
