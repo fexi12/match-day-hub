@@ -369,7 +369,7 @@ function PlayerMarker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div
-          className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
+          className="group absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
           style={{ left: `${x}%`, top: `${y}%` }}
         >
           <button
@@ -393,7 +393,7 @@ function PlayerMarker({
             )}
             {isMine && (
               <div
-                className="absolute top-0 right-0 h-4 w-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold"
+                className="absolute top-0 right-0 h-4 w-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold opacity-0 group-hover:opacity-100 transition-opacity"
                 style={{ backgroundColor: "oklch(0.65 0.22 35)" }}
               >×</div>
             )}
