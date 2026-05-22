@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { normalizePlayers, type Player } from "@/lib/match-store";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import {
   BarChart,
   Bar,
@@ -70,7 +71,11 @@ export const Route = createFileRoute("/rankings")({
   head: () => ({
     meta: [{ title: "Player Rankings — Ararat Porto FC" }],
   }),
-  component: RankingsPage,
+  component: () => (
+    <AuthProvider>
+      <RankingsPage />
+    </AuthProvider>
+  ),
 });
 
 function RankingsPage() {
@@ -275,6 +280,7 @@ type MatchEntry = {
   kickoff: string;
   location: string;
   format: string;
+  referee: string;
   home_players: Player[];
   away_players: Player[];
   home_color: string;
@@ -289,7 +295,7 @@ function HistoryContent() {
   useEffect(() => {
     supabase
       .from("matches")
-      .select("id, name, opponent, match_date, kickoff, location, format, home_players, away_players, home_color, away_color")
+      .select("id, name, opponent, match_date, kickoff, location, format, referee, home_players, away_players, home_color, away_color")
       .order("match_date", { ascending: false })
       .limit(20)
       .then(({ data }) => {
@@ -304,6 +310,7 @@ function HistoryContent() {
             kickoff: m.kickoff ?? "",
             location: m.location ?? "",
             format: m.format ?? "7v7",
+            referee: m.referee ?? "",
             home_players: normalizePlayers(m.home_players),
             away_players: normalizePlayers(m.away_players),
             home_color: m.home_color ?? "#1e3a5f",
@@ -314,7 +321,12 @@ function HistoryContent() {
   }, []);
 
   if (loading) return <p className="text-muted-foreground text-sm py-8 text-center">Loading...</p>;
-  if (!matches.length) return <p className="text-muted-foreground text-sm py-8 text-center">No saved matches yet.</p>;
+  if (!matches.length) return (
+    <div className="text-center py-8">
+      <p className="text-muted-foreground text-sm">No saved matches yet.</p>
+      <p className="text-xs text-muted-foreground mt-1">Save a match on the matchday page to see it here.</p>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-3">
@@ -332,6 +344,7 @@ function HistoryContent() {
                 <p className="text-xs text-muted-foreground">
                   {m.match_date ? format(new Date(m.match_date), "d MMM yyyy") : "No date"} — {m.opponent || "vs ?"}
                   {m.kickoff ? ` · ${m.kickoff}` : ""}
+                  {m.referee ? ` · ⚑ ${m.referee}` : ""}
                 </p>
               </div>
               <div className="flex items-center gap-2">

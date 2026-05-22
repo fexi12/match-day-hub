@@ -6,7 +6,6 @@ import type { Format } from "@/lib/match-store";
 
 export function MatchHero() {
   const { match, update, canEdit } = useMatch();
-  const ro = !canEdit;
 
   const mapsUrl = match.location
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(match.location)}`
@@ -56,6 +55,14 @@ export function MatchHero() {
             <Input
               value={match.duration}
               onChange={(e) => update("duration", e.target.value)}
+              className="h-7 px-1"
+            />
+          </Field>
+          <Field label="REFEREE">
+            <Input
+              value={match.referee}
+              onChange={(e) => update("referee", e.target.value)}
+              placeholder="Referee name"
               className="h-7 px-1"
             />
           </Field>
