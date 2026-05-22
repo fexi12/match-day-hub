@@ -71,6 +71,15 @@ export function Lineup() {
     update(key, arr);
   };
 
+  const removeSelf = (team: "home" | "away", i: number) => {
+    if (!user) return;
+    const key = team === "home" ? "home_players" : "away_players";
+    const arr = ensureSize(match[key], size);
+    arr[i] = { name: "", email: "" };
+    update(key, arr);
+    toast.success("Removed from squad");
+  };
+
   const claimSlot = async (team: "home" | "away", i: number) => {
     if (!user) {
       await signInWithGoogle();
@@ -149,6 +158,7 @@ export function Lineup() {
                 player={awayPlayers[i]}
                 photo={resolvePhoto(awayPlayers[i])}
                 onClaim={() => claimSlot("away", i)}
+                onRemoveSelf={() => removeSelf("away", i)}
                 userEmail={user?.email ?? null}
                 isSignedIn={!!user}
               />
@@ -163,6 +173,7 @@ export function Lineup() {
                 player={homePlayers[i]}
                 photo={resolvePhoto(homePlayers[i])}
                 onClaim={() => claimSlot("home", i)}
+                onRemoveSelf={() => removeSelf("home", i)}
                 userEmail={user?.email ?? null}
                 isSignedIn={!!user}
               />
@@ -344,6 +355,7 @@ function PlayerMarker({
   player: Player;
   photo: string | undefined;
   onClaim: () => void | Promise<void>;
+  onRemoveSelf: () => void | Promise<void>;
   userEmail: string | null;
   isSignedIn: boolean;
 }) {
@@ -353,48 +365,63 @@ function PlayerMarker({
   const isMine = !!userEmail && !!player?.email && player.email.toLowerCase() === userEmail.toLowerCase();
   const [open, setOpen] = useState(false);
 
-  const marker = (
-    <div
-      className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
-      style={{ left: `${x}%`, top: `${y}%` }}
-    >
-      <button
-        type="button"
-        onClick={isEmpty ? () => setOpen(true) : undefined}
-        disabled={!isEmpty}
-        className={`relative h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full border-2 shadow-lg overflow-hidden flex items-center justify-center font-display transition ${
-          isEmpty ? "cursor-pointer hover:scale-110 hover:ring-2 hover:ring-primary/60" : "cursor-default"
-        } ${isMine ? "ring-2 ring-primary" : ""}`}
-        style={{
-          backgroundColor: color,
-          color: isLight ? "#1a1a1a" : "#ffffff",
-          borderColor: "#ffffff",
-        }}
-      >
-        {photo ? (
-          <img src={photo} alt={name ?? `Player ${number}`} className="absolute inset-0 h-full w-full object-cover" />
-        ) : name ? (
-          <InitialsAvatar name={name} size="lg" />
-        ) : (
-          <span className="text-sm sm:text-xl md:text-2xl">{number}</span>
-        )}
-        
-      </button>
-      {name && (
-        <span className="mt-1 px-2 py-0.5 text-[11px] font-semibold bg-primary text-primary-foreground rounded whitespace-nowrap max-w-[120px] truncate">
-          {name}
-        </span>
-      )}
-    </div>
-  );
-
-  if (!isEmpty) return marker;
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{marker}</PopoverTrigger>
+      <PopoverTrigger asChild>
+        <div
+          className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
+          style={{ left: `${x}%`, top: `${y}%` }}
+        >
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className={`relative h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full border-2 shadow-lg overflow-hidden flex items-center justify-center font-display transition ${
+              isMine || isEmpty ? "cursor-pointer hover:scale-110 hover:ring-2 hover:ring-primary/60" : "cursor-default"
+            } ${isMine ? "ring-2 ring-primary" : ""}`}
+            style={{
+              backgroundColor: color,
+              color: isLight ? "#1a1a1a" : "#ffffff",
+              borderColor: "#ffffff",
+            }}
+          >
+            {photo ? (
+              <img src={photo} alt={name ?? `Player ${number}`} className="absolute inset-0 h-full w-full object-cover" />
+            ) : name ? (
+              <InitialsAvatar name={name} size="lg" />
+            ) : (
+              <span className="text-sm sm:text-xl md:text-2xl">{number}</span>
+            )}
+            {isMine && (
+              <div
+                className="absolute top-0 right-0 h-4 w-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold"
+                style={{ backgroundColor: "oklch(0.65 0.22 35)" }}
+              >×</div>
+            )}
+          </button>
+          {name && !isMine && (
+            <span className="mt-1 px-2 py-0.5 text-[11px] font-semibold bg-primary text-primary-foreground rounded whitespace-nowrap max-w-[120px] truncate">
+              {name}
+            </span>
+          )}
+        </div>
+      </PopoverTrigger>
       <PopoverContent className="w-56 p-3" side="top">
-        {isSignedIn ? (
+        {isMine ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-muted-foreground">That's you! Click to remove yourself.</p>
+            <button
+              type="button"
+              onClick={async () => {
+                setOpen(false);
+                await onRemoveSelf();
+              }}
+              className="w-full px-3 py-2 rounded font-display text-sm hover:opacity-90 transition"
+              style={{ backgroundColor: "oklch(0.65 0.22 35)", color: "white" }}
+            >
+              Remove me
+            </button>
+          </div>
+        ) : isSignedIn ? (
           <div className="flex flex-col gap-2">
             <p className="text-xs text-muted-foreground">Take position #{number}</p>
             <button
