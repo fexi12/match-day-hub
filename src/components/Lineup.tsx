@@ -76,12 +76,18 @@ export function Lineup() {
       await signInWithGoogle();
       return;
     }
-    if (!match.id) {
-      toast.error("Save the match first before claiming a spot");
-      return;
+    let matchId = match.id;
+    if (!matchId) {
+      if (!canEdit) {
+        toast.error("Ask an admin to save the match first");
+        return;
+      }
+      const saved = await save();
+      if (!saved) return;
+      matchId = saved;
     }
     const { error } = await supabase.rpc("claim_lineup_slot", {
-      _match_id: match.id,
+      _match_id: matchId,
       _team: team,
       _slot_index: i,
     });
