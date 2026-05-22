@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FolderOpen, Search, Trash2, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useMatch, defaultMatch, type MatchState } from "@/lib/match-store";
+import { useMatch, defaultMatch, normalizePlayers, type MatchState } from "@/lib/match-store";
 import { toast } from "sonner";
 
 type Row = {
@@ -65,8 +65,8 @@ export function MatchesDialog() {
       format: data.format as MatchState["format"],
       home_color: data.home_color,
       away_color: data.away_color,
-      home_players: (data.home_players as string[]) ?? [],
-      away_players: (data.away_players as string[]) ?? [],
+      home_players: normalizePlayers(data.home_players),
+      away_players: normalizePlayers(data.away_players),
       stats: (data.stats as MatchState["stats"]) ?? [],
       goals: (data.goals as MatchState["goals"]) ?? [],
       videos: (data.videos as MatchState["videos"]) ?? [],
