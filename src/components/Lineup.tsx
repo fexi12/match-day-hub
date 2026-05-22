@@ -1,11 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMatch, normalizePlayers, type Format, type Player } from "@/lib/match-store";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { usePlayerAvatars, initialsOf, hueOf } from "@/lib/use-player-avatars";
-import { Upload, X, Mail } from "lucide-react";
 import { toast } from "sonner";
 
 const FORMATIONS: Record<Format, { home: [number, number][]; away: [number, number][] }> = {
