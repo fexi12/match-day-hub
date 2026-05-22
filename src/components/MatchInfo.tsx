@@ -17,7 +17,7 @@ export function MatchInfo() {
             <h2 className="mt-2 text-5xl md:text-6xl text-primary-foreground">The Fixture</h2>
           </div>
           <div className="text-right">
-            <p className="text-3xl font-bold">Ararat Porto <span className="text-accent">vs</span> Rivals FC</p>
+            <p className="text-3xl font-bold">Ararat Porto <span className="text-accent">vs</span> Guest FC</p>
           </div>
         </div>
 

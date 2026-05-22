@@ -36,7 +36,7 @@ const DEFAULT_STATS: Stat[] = [
 export const defaultMatch = (): MatchState => ({
   id: null,
   name: "Matchday 01",
-  opponent: "Rivals FC",
+  opponent: "Guest FC",
   match_date: "2026-05-30",
   kickoff: "19:00",
   duration: "2 hours",
