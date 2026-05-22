@@ -43,7 +43,7 @@ const ensureSize = (arr: Player[], n: number): Player[] => {
 };
 
 export function Lineup() {
-  const { match, update } = useMatch();
+  const { match, update, canEdit } = useMatch();
   const { user } = useAuth();
   const size = useMemo(() => parseInt(match.format), [match.format]);
   const positions = FORMATIONS[match.format];
@@ -74,7 +74,8 @@ export function Lineup() {
                 <button
                   key={f}
                   onClick={() => update("format", f)}
-                  className={`px-5 py-2 font-display text-lg border-2 transition ${
+                  disabled={!canEdit}
+                  className={`px-5 py-2 font-display text-lg border-2 transition disabled:opacity-60 disabled:cursor-not-allowed ${
                     match.format === f
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-background border-border hover:border-primary"
@@ -235,7 +236,10 @@ function PlayerRow({
         onChange={(e) => onChange({ name: e.target.value })}
         placeholder={`Player ${index + 1}`}
         className="h-9 flex-1"
+        readOnly={!canUpload}
+        disabled={!canUpload}
       />
+
       {player.photo_url && (
         <button
           type="button"
