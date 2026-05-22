@@ -74,6 +74,24 @@ export type Database = {
         }
         Relationships: []
       }
+      player_avatars: {
+        Row: {
+          avatar_url: string
+          email: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url: string
+          email: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string
+          email?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

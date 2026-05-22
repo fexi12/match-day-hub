@@ -3,7 +3,8 @@ import { Input } from "@/components/ui/input";
 import { useMatch, type Format, type Player } from "@/lib/match-store";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { ImagePlus, X } from "lucide-react";
+import { usePlayerAvatars, initialsOf, hueOf } from "@/lib/use-player-avatars";
+import { Upload, X, Mail } from "lucide-react";
 import { toast } from "sonner";
 
 const FORMATIONS: Record<Format, { home: [number, number][]; away: [number, number][] }> = {
@@ -48,15 +49,27 @@ export function Lineup() {
   const size = useMemo(() => parseInt(match.format), [match.format]);
   const positions = FORMATIONS[match.format];
 
+  const homePlayers = ensureSize(match.home_players, size);
+  const awayPlayers = ensureSize(match.away_players, size);
+
+  // Look up Google avatars for any player with an email
+  const allEmails = useMemo(
+    () => [...homePlayers, ...awayPlayers].map((p) => p.email ?? "").filter(Boolean),
+    [homePlayers, awayPlayers],
+  );
+  const avatarMap = usePlayerAvatars(allEmails);
+
+  const resolvePhoto = (p: Player): string | undefined => {
+    if (p.email && avatarMap[p.email.toLowerCase()]) return avatarMap[p.email.toLowerCase()];
+    return p.photo_url;
+  };
+
   const setPlayer = (team: "home" | "away", i: number, patch: Partial<Player>) => {
     const key = team === "home" ? "home_players" : "away_players";
     const arr = ensureSize(match[key], size);
     arr[i] = { ...arr[i], ...patch };
     update(key, arr);
   };
-
-  const homePlayers = ensureSize(match.home_players, size);
-  const awayPlayers = ensureSize(match.away_players, size);
 
   return (
     <section id="lineup" className="bg-background border-b border-border">
@@ -95,10 +108,26 @@ export function Lineup() {
           <div className="relative aspect-[2/3] sm:aspect-[3/5] md:aspect-[2/3] rounded-xl overflow-hidden shadow-2xl border-2 border-primary">
             <Pitch />
             {positions.away.map(([x, y], i) => (
-              <PlayerMarker key={`a${i}`} x={x} y={y} color={match.away_color} number={i + 1} player={awayPlayers[i]} />
+              <PlayerMarker
+                key={`a${i}`}
+                x={x}
+                y={y}
+                color={match.away_color}
+                number={i + 1}
+                player={awayPlayers[i]}
+                photo={resolvePhoto(awayPlayers[i])}
+              />
             ))}
             {positions.home.map(([x, y], i) => (
-              <PlayerMarker key={`h${i}`} x={x} y={y} color={match.home_color} number={i + 1} player={homePlayers[i]} />
+              <PlayerMarker
+                key={`h${i}`}
+                x={x}
+                y={y}
+                color={match.home_color}
+                number={i + 1}
+                player={homePlayers[i]}
+                photo={resolvePhoto(homePlayers[i])}
+              />
             ))}
           </div>
 
@@ -108,7 +137,8 @@ export function Lineup() {
               color={match.home_color}
               size={size}
               players={homePlayers}
-              canUpload={!!user}
+              canUpload={canEdit}
+              resolvePhoto={resolvePhoto}
               onChange={(i, patch) => setPlayer("home", i, patch)}
             />
             <Roster
@@ -116,12 +146,13 @@ export function Lineup() {
               color={match.away_color}
               size={size}
               players={awayPlayers}
-              canUpload={!!user}
+              canUpload={canEdit}
+              resolvePhoto={resolvePhoto}
               onChange={(i, patch) => setPlayer("away", i, patch)}
             />
             {!user && (
               <p className="text-xs text-muted-foreground italic">
-                Sign in to upload player photos.
+                Sign in to add players. Each player's Google photo appears once they sign in with the email you set.
               </p>
             )}
           </div>
@@ -158,6 +189,7 @@ function Roster({
   size,
   players,
   canUpload,
+  resolvePhoto,
   onChange,
 }: {
   title: string;
@@ -165,6 +197,7 @@ function Roster({
   size: number;
   players: Player[];
   canUpload: boolean;
+  resolvePhoto: (p: Player) => string | undefined;
   onChange: (i: number, patch: Partial<Player>) => void;
 }) {
   return (
@@ -179,6 +212,7 @@ function Roster({
             key={i}
             index={i}
             player={players[i] ?? { name: "" }}
+            photo={resolvePhoto(players[i] ?? { name: "" })}
             canUpload={canUpload}
             onChange={(patch) => onChange(i, patch)}
           />
@@ -188,14 +222,34 @@ function Roster({
   );
 }
 
+function InitialsAvatar({ name, size = "md" }: { name: string; size?: "sm" | "md" | "lg" }) {
+  const initials = initialsOf(name);
+  const hue = hueOf(name);
+  const sizes = {
+    sm: "h-9 w-9 text-xs",
+    md: "h-10 w-10 text-sm",
+    lg: "h-full w-full text-base",
+  };
+  return (
+    <div
+      className={`${sizes[size]} flex items-center justify-center font-display font-bold text-white`}
+      style={{ background: `linear-gradient(135deg, hsl(${hue} 65% 45%), hsl(${(hue + 40) % 360} 65% 35%))` }}
+    >
+      {initials}
+    </div>
+  );
+}
+
 function PlayerRow({
   index,
   player,
+  photo,
   canUpload,
   onChange,
 }: {
   index: number;
   player: Player;
+  photo: string | undefined;
   canUpload: boolean;
   onChange: (patch: Partial<Player>) => void;
 }) {
@@ -215,37 +269,65 @@ function PlayerRow({
     onChange({ photo_url: data.publicUrl });
   };
 
+  const promptEmail = () => {
+    const current = player.email ?? "";
+    const next = window.prompt(
+      "Google email for this player (their Google photo will appear once they sign in):",
+      current,
+    );
+    if (next === null) return;
+    const trimmed = next.trim();
+    onChange({ email: trimmed || undefined });
+  };
+
   return (
     <div className="flex items-center gap-2">
       <span className="font-display text-lg w-7 text-muted-foreground">{index + 1}</span>
-      <button
-        type="button"
-        onClick={() => canUpload && inputRef.current?.click()}
-        disabled={!canUpload}
-        title={canUpload ? "Upload photo" : "Sign in to upload"}
-        className="h-9 w-9 shrink-0 rounded-full border-2 border-border overflow-hidden flex items-center justify-center bg-muted hover:border-primary transition disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {player.photo_url ? (
-          <img src={player.photo_url} alt="" className="h-full w-full object-cover" />
+      <div className="h-9 w-9 shrink-0 rounded-full border-2 border-border overflow-hidden bg-muted">
+        {photo ? (
+          <img src={photo} alt={player.name || `Player ${index + 1}`} className="h-full w-full object-cover" />
+        ) : player.name ? (
+          <InitialsAvatar name={player.name} size="sm" />
         ) : (
-          <ImagePlus className="h-4 w-4 text-muted-foreground" />
+          <div className="h-full w-full flex items-center justify-center text-muted-foreground text-xs font-display">+</div>
         )}
-      </button>
+      </div>
       <Input
         value={player.name ?? ""}
         onChange={(e) => onChange({ name: e.target.value })}
-        placeholder={`Player ${index + 1}`}
+        placeholder={`Add player ${index + 1}`}
         className="h-9 flex-1"
         readOnly={!canUpload}
         disabled={!canUpload}
       />
-
-      {player.photo_url && (
+      {canUpload && (
+        <>
+          <button
+            type="button"
+            onClick={promptEmail}
+            title={player.email ? `Linked to ${player.email}` : "Link Google email"}
+            className={`p-1.5 rounded border transition ${
+              player.email ? "border-primary text-primary" : "border-border text-muted-foreground hover:border-primary"
+            }`}
+          >
+            <Mail className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            title="Upload custom photo"
+            className="p-1.5 rounded border border-border text-muted-foreground hover:border-primary transition"
+          >
+            <Upload className="h-3.5 w-3.5" />
+          </button>
+        </>
+      )}
+      {player.photo_url && canUpload && (
         <button
           type="button"
           onClick={() => onChange({ photo_url: undefined })}
           className="text-muted-foreground hover:text-destructive p-1"
-          title="Remove photo"
+          title="Remove custom photo"
         >
           <X className="h-4 w-4" />
         </button>
@@ -295,16 +377,17 @@ function PlayerMarker({
   color,
   number,
   player,
+  photo,
 }: {
   x: number;
   y: number;
   color: string;
   number: number;
   player: Player;
+  photo: string | undefined;
 }) {
   const isLight = ["#f0e8d6", "#ffffff", "#e0b441", "#5cbdb9"].includes(color);
   const name = player?.name;
-  const photo = player?.photo_url;
   return (
     <div
       className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
@@ -319,18 +402,18 @@ function PlayerMarker({
         }}
       >
         {photo ? (
-          <>
-            <img src={photo} alt={name ?? `Player ${number}`} className="absolute inset-0 h-full w-full object-cover" />
-            <span
-              className="absolute -bottom-0.5 -right-0.5 h-5 w-5 sm:h-6 sm:w-6 rounded-full border-2 border-white flex items-center justify-center text-[10px] sm:text-xs font-display"
-              style={{ backgroundColor: color, color: isLight ? "#1a1a1a" : "#ffffff" }}
-            >
-              {number}
-            </span>
-          </>
+          <img src={photo} alt={name ?? `Player ${number}`} className="absolute inset-0 h-full w-full object-cover" />
+        ) : name ? (
+          <InitialsAvatar name={name} size="lg" />
         ) : (
           <span className="text-sm sm:text-xl md:text-2xl">{number}</span>
         )}
+        <span
+          className="absolute -bottom-0.5 -right-0.5 h-5 w-5 sm:h-6 sm:w-6 rounded-full border-2 border-white flex items-center justify-center text-[10px] sm:text-xs font-display"
+          style={{ backgroundColor: color, color: isLight ? "#1a1a1a" : "#ffffff" }}
+        >
+          {number}
+        </span>
       </div>
       {name && (
         <span className="mt-1 px-2 py-0.5 text-[11px] font-semibold bg-primary text-primary-foreground rounded whitespace-nowrap max-w-[120px] truncate">

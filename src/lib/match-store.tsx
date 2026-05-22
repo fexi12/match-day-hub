@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
 export type Format = "5v5" | "7v7" | "8v8" | "11v11";
-export type Player = { name: string; photo_url?: string };
+export type Player = { name: string; photo_url?: string; email?: string };
 export type Stat = { label: string; home: number; away: number };
 export type Goal = { id: number; team: "home" | "away"; minute: string; scorer: string; assist: string };
 export type Video = { id: number; title: string; url: string };
@@ -62,6 +62,7 @@ export function normalizePlayers(raw: unknown): Player[] {
       return {
         name: typeof obj.name === "string" ? obj.name : "",
         photo_url: typeof obj.photo_url === "string" ? obj.photo_url : undefined,
+        email: typeof obj.email === "string" ? obj.email : undefined,
       };
     }
     return { name: "" };
