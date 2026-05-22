@@ -65,7 +65,12 @@ function Page() {
             <MatchesDialog />
             {user ? (
               <>
-                <Button onClick={save} disabled={saving} className="font-display tracking-wider">
+                {isAdmin && (
+                  <Button asChild variant="outline" className="font-display tracking-wider">
+                    <Link to="/admin"><ShieldCheck className="h-4 w-4 mr-2" />ADMIN</Link>
+                  </Button>
+                )}
+                <Button onClick={save} disabled={saving || !canEdit} className="font-display tracking-wider">
                   <Save className="h-4 w-4 mr-2" /> {saving ? "SAVING…" : "SAVE"}
                 </Button>
                 <Button onClick={signOut} variant="outline" className="font-display tracking-wider" title={user.email ?? ""}>
