@@ -181,8 +181,7 @@ export function Lineup() {
               color={match.home_color}
               size={size}
               players={homePlayers}
-              canUpload={canEdit}
-              resolvePhoto={resolvePhoto}
+              canEdit={canEdit}
               onChange={(i, patch) => setPlayer("home", i, patch)}
             />
             <Roster
@@ -190,10 +189,10 @@ export function Lineup() {
               color={match.away_color}
               size={size}
               players={awayPlayers}
-              canUpload={canEdit}
-              resolvePhoto={resolvePhoto}
+              canEdit={canEdit}
               onChange={(i, patch) => setPlayer("away", i, patch)}
             />
+
             {!user && (
               <p className="text-xs text-muted-foreground italic">
                 Sign in to add players. Each player's Google photo appears once they sign in with the email you set.
