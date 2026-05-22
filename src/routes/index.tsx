@@ -104,6 +104,7 @@ function Page() {
       </header>
 
       <Lineup />
+      <Jerseys />
       <Statistics />
       <Videos />
 
