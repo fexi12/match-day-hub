@@ -58,7 +58,32 @@ function Index() {
               </a>
             </div>
           </div>
-          <img src={logo} alt="Ararat Porto crest" className="w-64 md:w-80 object-contain drop-shadow-2xl" />
+          <div className="w-full md:w-80 border-2 border-primary rounded-xl bg-card p-5 shadow-xl">
+            <p className="text-xs tracking-[0.25em]" style={{ color: "var(--color-ember)" }}>
+              MATCHDAY 01
+            </p>
+            <p className="mt-2 font-display text-2xl leading-tight">
+              Ararat Porto <span className="text-accent">vs</span> Rivals FC
+            </p>
+            <div className="mt-4 border-t border-border pt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+              <div>
+                <p className="text-[10px] tracking-[0.2em] text-muted-foreground">DATE</p>
+                <p className="font-semibold">Sat 30 May</p>
+              </div>
+              <div>
+                <p className="text-[10px] tracking-[0.2em] text-muted-foreground">KICK-OFF</p>
+                <p className="font-semibold">19:30</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-[10px] tracking-[0.2em] text-muted-foreground">LOCATION</p>
+                <p className="font-semibold">Campo do Dragão · Porto</p>
+              </div>
+              <div>
+                <p className="text-[10px] tracking-[0.2em] text-muted-foreground">DURATION</p>
+                <p className="font-semibold">90 min</p>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
