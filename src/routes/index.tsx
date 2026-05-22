@@ -48,6 +48,7 @@ function Page() {
       <a href="#jerseys" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">KIT</a>
       <a href="#stats" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">STATS</a>
       <a href="#videos" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">VIDEOS</a>
+      <a href="/rankings" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">RANKINGS</a>
     </div>
   );
 
@@ -58,6 +59,9 @@ function Page() {
           <Link to="/admin"><ShieldCheck className="h-4 w-4 mr-2" />ADMIN</Link>
         </Button>
       )}
+      <Button asChild variant="outline" className="font-display tracking-wider w-full justify-center">
+        <Link to="/rankings">📊 RANKINGS</Link>
+      </Button>
       <Button onClick={save} disabled={saving} className="font-display tracking-wider w-full justify-center">
         <Save className="h-4 w-4 mr-2" /> {saving ? "SAVING…" : "SAVE"}
       </Button>
@@ -94,6 +98,7 @@ function Page() {
               <a href="#jerseys" className="hover:text-accent transition">KIT</a>
               <a href="#stats" className="hover:text-accent transition">STATS</a>
               <a href="#videos" className="hover:text-accent transition">VIDEOS</a>
+              <a href="/rankings" className="hover:text-accent transition">RANKINGS</a>
             </div>
             <MatchesDialog />
             {user ? (
