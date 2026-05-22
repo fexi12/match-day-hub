@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { Save, LogIn, LogOut } from "lucide-react";
+import { Save, LogIn, LogOut, ShieldCheck } from "lucide-react";
 import logo from "@/assets/ararat-porto-logo.png";
 
 import { Lineup } from "@/components/Lineup";
