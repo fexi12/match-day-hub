@@ -1,6 +1,7 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { useMatch, type Format, type Player } from "@/lib/match-store";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useMatch, normalizePlayers, type Format, type Player } from "@/lib/match-store";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { usePlayerAvatars, initialsOf, hueOf } from "@/lib/use-player-avatars";
@@ -44,8 +45,8 @@ const ensureSize = (arr: Player[], n: number): Player[] => {
 };
 
 export function Lineup() {
-  const { match, update, canEdit } = useMatch();
-  const { user } = useAuth();
+  const { match, update, load, canEdit } = useMatch();
+  const { user, signInWithGoogle } = useAuth();
   const size = useMemo(() => parseInt(match.format), [match.format]);
   const positions = FORMATIONS[match.format];
 
@@ -70,6 +71,43 @@ export function Lineup() {
     arr[i] = { ...arr[i], ...patch };
     update(key, arr);
   };
+
+  const claimSlot = async (team: "home" | "away", i: number) => {
+    if (!user) {
+      await signInWithGoogle();
+      return;
+    }
+    if (!match.id) {
+      toast.error("Save the match first before claiming a spot");
+      return;
+    }
+    const { error } = await supabase.rpc("claim_lineup_slot", {
+      _match_id: match.id,
+      _team: team,
+      _slot_index: i,
+    });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    // Refresh the match row to reflect the change
+    const { data, error: fetchErr } = await supabase
+      .from("matches")
+      .select("home_players, away_players")
+      .eq("id", match.id)
+      .single();
+    if (fetchErr || !data) {
+      toast.success("Claimed!");
+      return;
+    }
+    load({
+      ...match,
+      home_players: normalizePlayers(data.home_players),
+      away_players: normalizePlayers(data.away_players),
+    });
+    toast.success("You're on the pitch!");
+  };
+
 
   return (
     <section id="lineup" className="bg-background border-b border-border">
@@ -116,6 +154,9 @@ export function Lineup() {
                 number={i + 1}
                 player={awayPlayers[i]}
                 photo={resolvePhoto(awayPlayers[i])}
+                onClaim={() => claimSlot("away", i)}
+                userEmail={user?.email ?? null}
+                isSignedIn={!!user}
               />
             ))}
             {positions.home.map(([x, y], i) => (
@@ -127,8 +168,12 @@ export function Lineup() {
                 number={i + 1}
                 player={homePlayers[i]}
                 photo={resolvePhoto(homePlayers[i])}
+                onClaim={() => claimSlot("home", i)}
+                userEmail={user?.email ?? null}
+                isSignedIn={!!user}
               />
             ))}
+
           </div>
 
           <div className="flex flex-col gap-6">
@@ -378,6 +423,9 @@ function PlayerMarker({
   number,
   player,
   photo,
+  onClaim,
+  userEmail,
+  isSignedIn,
 }: {
   x: number;
   y: number;
@@ -385,16 +433,28 @@ function PlayerMarker({
   number: number;
   player: Player;
   photo: string | undefined;
+  onClaim: () => void | Promise<void>;
+  userEmail: string | null;
+  isSignedIn: boolean;
 }) {
   const isLight = ["#f0e8d6", "#ffffff", "#e0b441", "#5cbdb9"].includes(color);
   const name = player?.name;
-  return (
+  const isEmpty = !name && !player?.email;
+  const isMine = !!userEmail && !!player?.email && player.email.toLowerCase() === userEmail.toLowerCase();
+  const [open, setOpen] = useState(false);
+
+  const marker = (
     <div
       className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
       style={{ left: `${x}%`, top: `${y}%` }}
     >
-      <div
-        className="relative h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full border-2 shadow-lg overflow-hidden flex items-center justify-center font-display"
+      <button
+        type="button"
+        onClick={isEmpty ? () => setOpen(true) : undefined}
+        disabled={!isEmpty}
+        className={`relative h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full border-2 shadow-lg overflow-hidden flex items-center justify-center font-display transition ${
+          isEmpty ? "cursor-pointer hover:scale-110 hover:ring-2 hover:ring-primary/60" : "cursor-default"
+        } ${isMine ? "ring-2 ring-primary" : ""}`}
         style={{
           backgroundColor: color,
           color: isLight ? "#1a1a1a" : "#ffffff",
@@ -414,7 +474,7 @@ function PlayerMarker({
         >
           {number}
         </span>
-      </div>
+      </button>
       {name && (
         <span className="mt-1 px-2 py-0.5 text-[11px] font-semibold bg-primary text-primary-foreground rounded whitespace-nowrap max-w-[120px] truncate">
           {name}
@@ -422,4 +482,44 @@ function PlayerMarker({
       )}
     </div>
   );
+
+  if (!isEmpty) return marker;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>{marker}</PopoverTrigger>
+      <PopoverContent className="w-56 p-3" side="top">
+        {isSignedIn ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-muted-foreground">Take position #{number}</p>
+            <button
+              type="button"
+              onClick={async () => {
+                setOpen(false);
+                await onClaim();
+              }}
+              className="w-full px-3 py-2 rounded bg-primary text-primary-foreground font-display text-sm hover:opacity-90 transition"
+            >
+              Place me here
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-muted-foreground">Sign in to claim this spot with your Google photo.</p>
+            <button
+              type="button"
+              onClick={async () => {
+                setOpen(false);
+                await onClaim();
+              }}
+              className="w-full px-3 py-2 rounded bg-primary text-primary-foreground font-display text-sm hover:opacity-90 transition"
+            >
+              Sign in with Google
+            </button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
 }
+
