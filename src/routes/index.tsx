@@ -76,6 +76,18 @@ function Page() {
               From the bridges of Porto to the slopes of Ararat — set the pitch, pick the kits,
               track every play, and keep every match on record.
             </p>
+            <div className="mt-10 flex items-center gap-6">
+              <img
+                src={jersey}
+                alt="Ararat Porto official jersey"
+                className="h-48 md:h-56 w-auto object-contain drop-shadow-xl"
+              />
+              <div>
+                <p className="text-xs tracking-[0.3em] text-muted-foreground">OFFICIAL KIT</p>
+                <p className="font-display text-2xl mt-1">2026 Home Jersey</p>
+              </div>
+            </div>
+
             <div className="mt-8 flex flex-wrap gap-3 font-display tracking-wider">
               <a href="#lineup" className="px-6 py-3 bg-primary text-primary-foreground border-2 border-primary">
                 BUILD THE LINEUP
