@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
+import { normalizePlayers, type Player } from "@/lib/match-store";
 import {
   BarChart,
   Bar,
@@ -43,7 +45,6 @@ function parseRankings(csv: string) {
     if (date) sessions.push({ date, ratings });
   }
 
-  // Compute per-player average (only from sessions where they played)
   const averages = players.map((name, i) => {
     const vals = sessions
       .map((s) => s.ratings[i])
@@ -53,10 +54,7 @@ function parseRankings(csv: string) {
     return { name, average: Math.round(avg * 10) / 10, games, min: vals.length ? Math.min(...vals) : 0, max: vals.length ? Math.max(...vals) : 0 };
   });
 
-  // Sort by average desc
   const sorted = [...averages].sort((a, b) => b.average - a.average);
-
-  // Top 10 trend data: last N sessions per player
   const recentSessions = sessions.slice(-8);
 
   return { players, sessions, averages: sorted, recentSessions };
@@ -116,10 +114,10 @@ function RankingsPage() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="trend">Trend</TabsTrigger>
             <TabsTrigger value="distribution">Distribution</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
-            {/* Top N selector */}
             <div className="flex items-center gap-4 mb-6">
               <p className="text-sm text-muted-foreground">Showing top</p>
               <div className="flex gap-2">
@@ -128,9 +126,7 @@ function RankingsPage() {
                     key={n}
                     onClick={() => setTopN(n)}
                     className={`px-4 py-1.5 rounded-full text-sm font-display transition border-2 ${
-                      topN === n
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "border-border hover:border-primary"
+                      topN === n ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary"
                     }`}
                   >
                     {n}
@@ -142,26 +138,12 @@ function RankingsPage() {
             <div className="bg-card border-2 border-border rounded-2xl p-6">
               <h3 className="font-display text-lg tracking-wider mb-6">Average Rating — Top {topN}</h3>
               <ResponsiveContainer width="100%" height={Math.max(300, topN * 28)}>
-                <BarChart
-                  data={chartData}
-                  layout="vertical"
-                  margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
-                >
+                <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 30, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
                   <XAxis type="number" domain={[0, 10]} tick={{ fontSize: 12 }} />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    width={140}
-                    tick={{ fontSize: 12, fontFamily: "Oswald" }}
-                  />
+                  <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 12, fontFamily: "Oswald" }} />
                   <Tooltip
-                    contentStyle={{
-                      background: "var(--color-card)",
-                      border: "2px solid var(--color-border)",
-                      borderRadius: "8px",
-                      fontFamily: "Oswald",
-                    }}
+                    contentStyle={{ background: "var(--color-card)", border: "2px solid var(--color-border)", borderRadius: "8px", fontFamily: "Oswald" }}
                     formatter={(val: number, _: string, props: { payload?: PlayerStats }) => {
                       const p = props.payload as PlayerStats;
                       return [`${val}/10`, `${p.games} games played`];
@@ -177,15 +159,12 @@ function RankingsPage() {
               </ResponsiveContainer>
             </div>
 
-            {/* Legend table */}
             <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {chartData.map((p) => (
                 <button
                   key={p.name}
                   onClick={() => setSelectedPlayer(p.name)}
-                  className={`flex items-center gap-2 p-3 rounded-xl border-2 transition text-left ${
-                    selectedPlayer === p.name ? "border-primary" : "border-border hover:border-accent"
-                  }`}
+                  className={`flex items-center gap-2 p-3 rounded-xl border-2 transition text-left ${selectedPlayer === p.name ? "border-primary" : "border-border hover:border-accent"}`}
                 >
                   <div className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
                   <div className="min-w-0">
@@ -218,39 +197,18 @@ function RankingsPage() {
                 <ResponsiveContainer width="100%" height={320}>
                   <LineChart data={trendData}>
                     <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fontSize: 11 }}
-                      tickFormatter={(d) => {
-                        try { return format(parseISO(d), "MMM d"); } catch { return d; }
-                      }}
-                    />
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(d) => { try { return format(parseISO(d), "MMM d"); } catch { return d; } }} />
                     <YAxis domain={[0, 10]} ticks={[0, 2, 4, 6, 8, 10]} tick={{ fontSize: 12 }} />
                     <Tooltip
-                      contentStyle={{
-                        background: "var(--color-card)",
-                        border: "2px solid var(--color-border)",
-                        borderRadius: "8px",
-                        fontFamily: "Oswald",
-                      }}
-                      labelFormatter={(label) => {
-                        try { return format(parseISO(label as string), "d MMM yyyy"); } catch { return label; }
-                      }}
+                      contentStyle={{ background: "var(--color-card)", border: "2px solid var(--color-border)", borderRadius: "8px", fontFamily: "Oswald" }}
+                      labelFormatter={(label) => { try { return format(parseISO(label as string), "d MMM yyyy"); } catch { return label; } }}
                       formatter={(val: number) => [`${val}/10`, "Rating"]}
                     />
-                    <Line
-                      type="monotone"
-                      dataKey="rating"
-                      stroke="#d44a2a"
-                      strokeWidth={3}
-                      dot={{ fill: "#d44a2a", r: 5 }}
-                      connectNulls={false}
-                    />
+                    <Line type="monotone" dataKey="rating" stroke="#d44a2a" strokeWidth={3} dot={{ fill: "#d44a2a", r: 5 }} connectNulls={false} />
                   </LineChart>
                 </ResponsiveContainer>
               )}
 
-              {/* Stats */}
               {(() => {
                 const p = averages.find((x) => x.name === selectedPlayer);
                 if (!p) return null;
@@ -286,21 +244,137 @@ function RankingsPage() {
                       <span className="text-sm font-display text-muted-foreground">{p.average}/10</span>
                     </div>
                     <div className="h-3 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${pct}%`,
-                          backgroundColor: "#d44a2a",
-                        }}
-                      />
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: "#d44a2a" }} />
                     </div>
                   </div>
                 );
               })}
             </div>
           </TabsContent>
+
+          <TabsContent value="history">
+            <div className="bg-card border-2 border-border rounded-2xl p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <History className="h-5 w-5" />
+                <h3 className="font-display text-lg tracking-wider">Squad History</h3>
+              </div>
+              <HistoryContent />
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
     </main>
+  );
+}
+
+type MatchEntry = {
+  id: string;
+  name: string;
+  opponent: string;
+  match_date: string;
+  kickoff: string;
+  location: string;
+  format: string;
+  home_players: Player[];
+  away_players: Player[];
+  home_color: string;
+  away_color: string;
+};
+
+function HistoryContent() {
+  const [matches, setMatches] = useState<MatchEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from("matches")
+      .select("id, name, opponent, match_date, kickoff, location, format, home_players, away_players, home_color, away_color")
+      .order("match_date", { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        setLoading(false);
+        if (!data) return;
+        setMatches(
+          data.map((m) => ({
+            id: m.id,
+            name: m.name,
+            opponent: m.opponent ?? "",
+            match_date: m.match_date ?? "",
+            kickoff: m.kickoff ?? "",
+            location: m.location ?? "",
+            format: m.format ?? "7v7",
+            home_players: normalizePlayers(m.home_players),
+            away_players: normalizePlayers(m.away_players),
+            home_color: m.home_color ?? "#1e3a5f",
+            away_color: m.away_color ?? "#d44a2a",
+          })),
+        );
+      });
+  }, []);
+
+  if (loading) return <p className="text-muted-foreground text-sm py-8 text-center">Loading...</p>;
+  if (!matches.length) return <p className="text-muted-foreground text-sm py-8 text-center">No saved matches yet.</p>;
+
+  return (
+    <div className="flex flex-col gap-3">
+      {matches.map((m) => {
+        const hasPlayers = m.home_players.some((p) => p.name) || m.away_players.some((p) => p.name);
+        const isOpen = expandedId === m.id;
+        return (
+          <div key={m.id} className="border border-border rounded-xl overflow-hidden">
+            <button
+              className="w-full px-4 py-3 flex items-center justify-between hover:bg-accent/10 transition text-left"
+              onClick={() => setExpandedId(isOpen ? null : m.id)}
+            >
+              <div>
+                <p className="font-display text-sm font-semibold">{m.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {m.match_date ? format(new Date(m.match_date), "d MMM yyyy") : "No date"} — {m.opponent || "vs ?"}
+                  {m.kickoff ? ` · ${m.kickoff}` : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-display text-muted-foreground">{m.format}</span>
+                <span className="text-xs">{isOpen ? "▲" : "▼"}</span>
+              </div>
+            </button>
+            {isOpen && (
+              <div className="px-4 pb-4 border-t border-border pt-3">
+                {m.location && <p className="text-xs text-muted-foreground mb-3">📍 {m.location}</p>}
+                {!hasPlayers ? (
+                  <p className="text-xs text-muted-foreground italic">No players registered for this match.</p>
+                ) : (
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <MiniLineup label="Home" players={m.home_players.filter((p) => p.name)} color={m.home_color} />
+                    <MiniLineup label={m.opponent || "Away"} players={m.away_players.filter((p) => p.name)} color={m.away_color} />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MiniLineup({ label, players, color }: { label: string; players: Player[]; color: string }) {
+  const initials = (name: string) => name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  return (
+    <div className="flex-1 min-w-0">
+      <p className="text-xs tracking-widest text-muted-foreground mb-2">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {players.map((p, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <div className="h-7 w-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{ backgroundColor: color }}>
+              {initials(p.name)}
+            </div>
+            <span className="text-xs truncate max-w-[80px]">{p.name}</span>
+          </div>
+        ))}
+        {players.length === 0 && <span className="text-xs text-muted-foreground italic">No players</span>}
+      </div>
+    </div>
   );
 }

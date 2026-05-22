@@ -77,7 +77,15 @@ export function Lineup() {
     const arr = ensureSize(match[key], size);
     arr[i] = { name: "", email: "" };
     update(key, arr);
-    toast.success("Removed from squad");
+    // Persist to DB
+    if (match.id) {
+      supabase.from("matches").update({ [key]: arr }).eq("id", match.id).then(({ error }) => {
+        if (error) toast.error("Failed to remove");
+        else toast.success("Removed from squad");
+      });
+    } else {
+      toast.success("Removed from squad");
+    }
   };
 
   const claimSlot = async (team: "home" | "away", i: number) => {
@@ -411,9 +419,10 @@ function PlayerMarker({
             <p className="text-xs text-muted-foreground">That's you! Click to remove yourself.</p>
             <button
               type="button"
-              onClick={async () => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setOpen(false);
-                await onRemoveSelf();
+                onRemoveSelf();
               }}
               className="w-full px-3 py-2 rounded font-display text-sm hover:opacity-90 transition"
               style={{ backgroundColor: "oklch(0.65 0.22 35)", color: "white" }}
