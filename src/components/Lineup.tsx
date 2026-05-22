@@ -44,7 +44,7 @@ const ensureSize = (arr: Player[], n: number): Player[] => {
 };
 
 export function Lineup() {
-  const { match, update, load, canEdit } = useMatch();
+  const { match, update, load, save, canEdit } = useMatch();
   const { user, signInWithGoogle } = useAuth();
   const size = useMemo(() => parseInt(match.format), [match.format]);
   const positions = FORMATIONS[match.format];
@@ -76,12 +76,18 @@ export function Lineup() {
       await signInWithGoogle();
       return;
     }
-    if (!match.id) {
-      toast.error("Save the match first before claiming a spot");
-      return;
+    let matchId = match.id;
+    if (!matchId) {
+      if (!canEdit) {
+        toast.error("Ask an admin to save the match first");
+        return;
+      }
+      const saved = await save();
+      if (!saved) return;
+      matchId = saved;
     }
     const { error } = await supabase.rpc("claim_lineup_slot", {
-      _match_id: match.id,
+      _match_id: matchId,
       _team: team,
       _slot_index: i,
     });
@@ -93,7 +99,7 @@ export function Lineup() {
     const { data, error: fetchErr } = await supabase
       .from("matches")
       .select("home_players, away_players")
-      .eq("id", match.id)
+      .eq("id", matchId)
       .single();
     if (fetchErr || !data) {
       toast.success("Claimed!");
