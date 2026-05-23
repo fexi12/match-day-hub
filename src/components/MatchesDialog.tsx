@@ -94,7 +94,10 @@ export function MatchesDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="font-display tracking-wider">
+        <Button
+          variant="outline"
+          className="font-display tracking-wider px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition"
+        >
           <FolderOpen className="h-4 w-4 mr-2" /> MATCHES
         </Button>
       </DialogTrigger>
