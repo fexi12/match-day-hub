@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMatch, defaultMatch, normalizePlayers, type MatchState } from "@/lib/match-store";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
 
 type Row = {
   id: string;
@@ -22,7 +23,7 @@ export function MatchesDialog() {
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
-  const { load } = useMatch();
+  const { load, createNewMatch } = useMatch();
   const { isAdmin } = useAuth();
 
   useEffect(() => {
@@ -72,6 +73,7 @@ export function MatchesDialog() {
       stats: (data.stats as MatchState["stats"]) ?? [],
       goals: (data.goals as MatchState["goals"]) ?? [],
       videos: (data.videos as MatchState["videos"]) ?? [],
+      referee: (data as Record<string, unknown>).referee as string ?? "",
     };
     load(m);
     setOpen(false);
@@ -85,12 +87,10 @@ export function MatchesDialog() {
     toast.success("Deleted");
   };
 
-  const newMatch = () => {
-    load(defaultMatch());
+  const handleNewMatch = async () => {
     setOpen(false);
-    toast.success("Started a new match");
+    await createNewMatch();
   };
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -113,8 +113,8 @@ export function MatchesDialog() {
               className="pl-9"
             />
           </div>
-          <Button onClick={newMatch} variant="default">
-            <Plus className="h-4 w-4 mr-1" /> New
+          <Button onClick={handleNewMatch} variant="default">
+            <Plus className="h-4 w-4 mr-1" /> New Match
           </Button>
         </div>
 

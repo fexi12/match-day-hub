@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -76,9 +76,10 @@ type Ctx = {
   update: <K extends keyof MatchState>(key: K, value: MatchState[K]) => void;
   reset: () => void;
   load: (m: MatchState) => void;
-  save: () => Promise<string | null>;
+  save: (opts?: { quiet?: boolean }) => Promise<string | null>;
   saving: boolean;
   canEdit: boolean;
+  createNewMatch: () => Promise<string | null>;
 };
 
 const MatchCtx = createContext<Ctx | null>(null);
@@ -122,18 +123,33 @@ export function MatchProvider({ children }: { children: ReactNode }) {
       });
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-save on every field change (debounced)
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const update = useCallback(<K extends keyof MatchState>(key: K, value: MatchState[K]) => {
     if (!user) {
       toast.error("Sign in to edit");
       return;
     }
     setMatch((m) => ({ ...m, [key]: value }));
-  }, [user]);
+    // Debounce: save 2s after last change
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => save({ quiet: true }), 2000);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const reset = useCallback(() => setMatch(defaultMatch()), []);
   const load = useCallback((m: MatchState) => setMatch(m), []);
 
-  const save = useCallback(async (): Promise<string | null> => {
+  const createNewMatch = useCallback(async (): Promise<string | null> => {
+    const next = defaultMatch();
+    next.name = `Matchday ${Date.now().toString().slice(-4)}`;
+    setMatch(next);
+    // Save to DB immediately and return the id
+    const saved = await save();
+    return saved;
+  }, [save]);
+
+  const save = useCallback(async (opts?: { quiet?: boolean }): Promise<string | null> => {
     setSaving(true);
     try {
       const payload = {
@@ -157,13 +173,13 @@ export function MatchProvider({ children }: { children: ReactNode }) {
       if (match.id) {
         const { error } = await supabase.from("matches").update(payload).eq("id", match.id);
         if (error) throw error;
-        toast.success("Match updated");
+        if (!opts?.quiet) toast.success("Match updated");
         return match.id;
       } else {
         const { data, error } = await supabase.from("matches").insert(payload).select().single();
         if (error) throw error;
         setMatch((m) => ({ ...m, id: data.id }));
-        toast.success("Match saved");
+        if (!opts?.quiet) toast.success("Match saved");
         return data.id as string;
       }
     } catch (e: unknown) {
@@ -175,7 +191,7 @@ export function MatchProvider({ children }: { children: ReactNode }) {
   }, [match]);
 
   return (
-    <MatchCtx.Provider value={{ match, update, reset, load, save, saving, canEdit }}>
+    <MatchCtx.Provider value={{ match, update, reset, load, save, saving, canEdit, createNewMatch }}>
       {children}
     </MatchCtx.Provider>
   );

@@ -181,6 +181,10 @@ function Page() {
                   <a href="#videos" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
                     HIGHLIGHTS
                   </a>
+                  <a href="/rankings" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
+                    RANKINGS
+                  </a>
+                  <MatchesDialog />
                 </>
               ) : (
                 <>
