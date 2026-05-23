@@ -39,6 +39,13 @@ function Index() {
   );
 }
 
+// Uniform boxed-button style shared across header + hero (same size, width, padding, font, border)
+const navBtn =
+  "inline-flex items-center justify-center min-w-[140px] px-6 py-3 border-2 border-primary " +
+  "font-display text-sm tracking-wider rounded-md transition " +
+  "hover:bg-primary hover:text-primary-foreground";
+const navBtnActive = navBtn + " bg-primary text-primary-foreground";
+
 function Page() {
   const { match, save, saving } = useMatch();
   const { user, signOut, isAdmin } = useAuth();
@@ -107,8 +114,8 @@ function Page() {
             </div>
             {user && (
               <>
-                <a href="#lineup" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition font-display tracking-wider">MATCHES</a>
-                <a href="/rankings" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition font-display tracking-wider">RANKINGS</a>
+                <a href="#lineup" className={navBtn}>MATCHES</a>
+                <a href="/rankings" className={navBtn}>RANKINGS</a>
                 {isAdmin && (
                   <Button asChild variant="outline" className="font-display tracking-wider">
                     <Link to="/admin"><ShieldCheck className="h-4 w-4 mr-2" />ADMIN</Link>
@@ -177,28 +184,28 @@ function Page() {
             <div className="mt-10 flex flex-wrap gap-3 font-display tracking-wider">
               {user ? (
                 <>
-                  <a href="#lineup" className="px-6 py-3 bg-primary text-primary-foreground border-2 border-primary">
+                  <a href="#lineup" className={navBtnActive}>
                     BUILD THE LINEUP
                   </a>
-                  <a href="#videos" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
+                  <a href="#videos" className={navBtn}>
                     HIGHLIGHTS
                   </a>
-                  <a href="/rankings" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
+                  <a href="/rankings" className={navBtn}>
                     RANKINGS
                   </a>
-                  <a href="#lineup" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
+                  <a href="#lineup" className={navBtn}>
                     MATCHES
                   </a>
                 </>
               ) : (
                 <>
-                  <a href="#lineup" className="px-6 py-3 bg-primary text-primary-foreground border-2 border-primary">
+                  <a href="#lineup" className={navBtnActive}>
                     BUILD THE LINEUP
                   </a>
-                  <a href="#videos" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
+                  <a href="#videos" className={navBtn}>
                     HIGHLIGHTS
                   </a>
-                  <a href="#stats" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
+                  <a href="#stats" className={navBtn}>
                     STATS
                   </a>
                 </>
@@ -259,11 +266,11 @@ function Page() {
       </header>
 
       <Lineup />
+      <Statistics />
+      <Videos />
       {user && (
         <>
           <Weather />
-          <Statistics />
-          <Videos />
           <Jerseys />
         </>
       )}
