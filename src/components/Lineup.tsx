@@ -353,6 +353,7 @@ function PlayerMarker({
   player,
   photo,
   onClaim,
+  onRemoveSelf,
   userEmail,
   isSignedIn,
 }: {
@@ -463,4 +464,3 @@ function PlayerMarker({
     </Popover>
   );
 }
-
