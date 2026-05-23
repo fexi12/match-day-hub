@@ -40,7 +40,7 @@ function Index() {
 }
 
 function Page() {
-  const { save, saving } = useMatch();
+  const { match, save, saving } = useMatch();
   const { user, signOut, isAdmin } = useAuth();
 
   const navLinks = user ? (
@@ -105,7 +105,7 @@ function Page() {
               <a href="#videos" className="hover:text-accent transition">VIDEOS</a>
               {user && <a href="/rankings" className="hover:text-accent transition">RANKINGS</a>}
             </div>
-            <MatchesDialog />
+            {user && <MatchesDialog />}
             {user ? (
               <>
                 {isAdmin && (
@@ -147,9 +147,11 @@ function Page() {
               <SheetContent side="right" className="w-72 pt-8">
                 {navLinks}
                 <div className="mt-6 flex flex-col gap-2">
+                  {user && (
                   <div className="mb-2">
                     <MatchesDialog />
                   </div>
+                )}
                   {actions}
                 </div>
               </SheetContent>
