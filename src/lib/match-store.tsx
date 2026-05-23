@@ -1,207 +1,120 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { AuthProvider, useAuth } from "@/lib/auth";
+import { listUsersWithRoles, setUserApproval, type AdminUserRow } from "@/lib/admin.functions";
 
-export type Format = "5v5" | "7v7" | "8v8" | "11v11";
-export type Player = { name: string; photo_url?: string; email?: string };
-export type Stat = { label: string; home: number; away: number };
-export type Goal = { id: number; team: "home" | "away"; minute: string; scorer: string; assist: string };
-export type Video = { id: number; title: string; url: string };
-
-export type MatchState = {
-  id: string | null;
-  name: string;
-  opponent: string;
-  match_date: string;
-  kickoff: string;
-  duration: string;
-  location: string;
-  format: Format;
-  home_color: string;
-  away_color: string;
-  home_players: Player[];
-  away_players: Player[];
-  stats: Stat[];
-  goals: Goal[];
-  videos: Video[];
-};
-
-const DEFAULT_STATS: Stat[] = [
-  { label: "Shots on Target", home: 0, away: 0 },
-  { label: "Possession %", home: 50, away: 50 },
-  { label: "Corners", home: 0, away: 0 },
-  { label: "Fouls", home: 0, away: 0 },
-  { label: "Yellow Cards", home: 0, away: 0 },
-];
-
-export const defaultMatch = (): MatchState => ({
-  id: null,
-  name: "Matchday 01",
-  opponent: "Guest FC",
-  match_date: "2026-05-30",
-  kickoff: "19:00",
-  duration: "2 hours",
-  location: "R. de Alves Redol 292, 4050-042 Porto",
-  format: "7v7",
-  home_color: "#1e3a5f",
-  away_color: "#d44a2a",
-  home_players: [],
-  away_players: [],
-  stats: DEFAULT_STATS,
-  goals: [],
-  videos: [],
+export const Route = createFileRoute("/admin")({
+  head: () => ({ meta: [{ title: "Admin — Ararat Porto FC" }] }),
+  component: () => (
+    <AuthProvider>
+      <Toaster richColors position="top-center" />
+      <AdminPage />
+    </AuthProvider>
+  ),
 });
 
-export function normalizePlayers(raw: unknown): Player[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.map((p) => {
-    if (typeof p === "string") return { name: p };
-    if (p && typeof p === "object") {
-      const obj = p as Record<string, unknown>;
-      return {
-        name: typeof obj.name === "string" ? obj.name : "",
-        photo_url: typeof obj.photo_url === "string" ? obj.photo_url : undefined,
-        email: typeof obj.email === "string" ? obj.email : undefined,
-      };
-    }
-    return { name: "" };
-  });
-}
+function AdminPage() {
+  const { user, isAdmin, loading } = useAuth();
+  const navigate = useNavigate();
+  const list = useServerFn(listUsersWithRoles);
+  const setApproval = useServerFn(setUserApproval);
 
-type Ctx = {
-  match: MatchState;
-  update: <K extends keyof MatchState>(key: K, value: MatchState[K]) => void;
-  reset: () => void;
-  load: (m: MatchState) => void;
-  save: (opts?: { quiet?: boolean; state?: MatchState }) => Promise<string | null>;
-  saving: boolean;
-  canEdit: boolean;
-  createNewMatch: () => Promise<string | null>;
-};
-
-const MatchCtx = createContext<Ctx | null>(null);
-
-export function MatchProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const canEdit = !!user;
-  const [match, setMatch] = useState<MatchState>(defaultMatch());
-  const [saving, setSaving] = useState(false);
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [loadingList, setLoadingList] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("matches")
-      .select("*")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setMatch({
-            id: data.id,
-            name: data.name,
-            opponent: data.opponent,
-            match_date: data.match_date ?? "",
-            kickoff: data.kickoff ?? "",
-            duration: data.duration ?? "",
-            location: data.location ?? "",
-            format: (data.format as Format) ?? "7v7",
-            home_color: data.home_color,
-            away_color: data.away_color,
-            home_players: normalizePlayers(data.home_players),
-            away_players: normalizePlayers(data.away_players),
-            stats: (data.stats as Stat[]) ?? DEFAULT_STATS,
-            goals: (data.goals as Goal[]) ?? [],
-            videos: (data.videos as Video[]) ?? [],
-          });
-        }
-      });
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const save = useCallback(async (opts?: { quiet?: boolean; state?: MatchState }): Promise<string | null> => {
-    const m = opts?.state ?? match;
-    setSaving(true);
-    try {
-      const payload = {
-        name: m.name,
-        opponent: m.opponent,
-        match_date: m.match_date || null,
-        kickoff: m.kickoff || null,
-        duration: m.duration || null,
-        location: m.location || null,
-        format: m.format,
-        home_color: m.home_color,
-        away_color: m.away_color,
-        home_players: m.home_players,
-        away_players: m.away_players,
-        stats: m.stats,
-        goals: m.goals,
-        videos: m.videos,
-        // Bump updated_at so this game is always "the latest" loaded on next visit.
-        // (There is no DB trigger to do this automatically.)
-        updated_at: new Date().toISOString(),
-      };
-
-      if (m.id) {
-        const { error } = await supabase.from("matches").update(payload).eq("id", m.id);
-        if (error) throw error;
-        if (!opts?.quiet) toast.success("Match updated");
-        return m.id;
-      } else {
-        const { data, error } = await supabase.from("matches").insert(payload).select().single();
-        if (error) throw error;
-        setMatch((prev) => ({ ...prev, id: data.id }));
-        if (!opts?.quiet) toast.success("Match saved");
-        return data.id as string;
-      }
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
-      return null;
-    } finally {
-      setSaving(false);
-    }
-  }, [match]);
-
-  const matchRef = useRef(match);
-  const saveRef = useRef(save);
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  matchRef.current = match;
-  saveRef.current = save;
-
-  const update = useCallback(<K extends keyof MatchState>(key: K, value: MatchState[K]) => {
+    if (loading) return;
     if (!user) {
-      toast.error("Sign in to edit");
+      navigate({ to: "/login" });
       return;
     }
-    setMatch((m) => ({ ...m, [key]: value }));
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => saveRef.current({ quiet: true }), 2000);
-  }, [user]);
+    if (!isAdmin) return;
+    list()
+      .then(setUsers)
+      .catch((e: Error) => toast.error(e.message))
+      .finally(() => setLoadingList(false));
+  }, [user, isAdmin, loading, list, navigate]);
 
-  const reset = useCallback(() => setMatch(defaultMatch()), []);
-  const load = useCallback((m: MatchState) => setMatch(m), []);
+  const toggle = async (u: AdminUserRow, value: boolean) => {
+    setBusy(u.id);
+    try {
+      await setApproval({ data: { user_id: u.id, approved: value } });
+      setUsers((rows) =>
+        rows.map((r) => (r.id === u.id ? { ...r, is_approved: value || r.is_admin } : r)),
+      );
+      toast.success(value ? "Approved" : "Revoked");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  };
 
-  const createNewMatch = useCallback(async (): Promise<string | null> => {
-    const next = defaultMatch();
-    next.name = `Matchday ${Date.now().toString().slice(-4)}`;
-    setMatch(next);
-    // Pass the fresh state explicitly — `save` would otherwise read the previous
-    // match from its closure on this render tick.
-    const saved = await saveRef.current({ state: next });
-    if (saved) setMatch((m) => ({ ...m, id: saved }));
-    return saved;
-  }, []);
+  if (loading) return <div className="p-10 text-center text-muted-foreground">Loading…</div>;
+
+  if (!isAdmin) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-6">
+        <div className="text-center">
+          <h1 className="font-display text-3xl mb-2">Admins only</h1>
+          <p className="text-muted-foreground mb-6">You don't have access to this page.</p>
+          <Button asChild><Link to="/">Go home</Link></Button>
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <MatchCtx.Provider value={{ match, update, reset, load, save, saving, canEdit, createNewMatch }}>
-      {children}
-    </MatchCtx.Provider>
-  );
-}
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border">
+        <div className="mx-auto max-w-4xl px-6 py-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="h-6 w-6 text-accent" />
+            <h1 className="font-display text-2xl tracking-wider">Editor Approvals</h1>
+          </div>
+          <Button asChild variant="outline"><Link to="/"><ArrowLeft className="h-4 w-4 mr-2" />Back</Link></Button>
+        </div>
+      </header>
 
-export function useMatch() {
-  const ctx = useContext(MatchCtx);
-  if (!ctx) throw new Error("useMatch must be inside MatchProvider");
-  return ctx;
+      <section className="mx-auto max-w-4xl px-6 py-10">
+        <p className="text-sm text-muted-foreground mb-6">
+          Approve users to let them edit matches, lineups, stats and videos. Public visitors can always view.
+        </p>
+
+        {loadingList ? (
+          <p className="text-muted-foreground">Loading users…</p>
+        ) : users.length === 0 ? (
+          <p className="text-muted-foreground italic">No users yet.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {users.map((u) => (
+              <div key={u.id} className="flex items-center gap-4 border-2 border-border rounded-lg p-4">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{u.email ?? "(no email)"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {u.is_admin ? "Admin · " : ""}joined {new Date(u.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Editor</span>
+                  <Switch
+                    checked={u.is_approved}
+                    disabled={u.is_admin || busy === u.id}
+                    onCheckedChange={(v) => toggle(u, v)}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
+  );
 }
