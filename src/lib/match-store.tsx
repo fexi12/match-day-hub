@@ -91,7 +91,8 @@ export function MatchProvider({ children }: { children: ReactNode }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    // Load the latest match for everyone (logged in or not) so the squad,
+    // players, stats and videos are publicly visible.
     supabase
       .from("matches")
       .select("*")
@@ -119,7 +120,7 @@ export function MatchProvider({ children }: { children: ReactNode }) {
           });
         }
       });
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user]); // re-fetch on mount and whenever auth state changes
 
   const save = useCallback(async (opts?: { quiet?: boolean; state?: MatchState }): Promise<string | null> => {
     const m = opts?.state ?? match;
