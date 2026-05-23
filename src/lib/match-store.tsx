@@ -164,8 +164,12 @@ export function MatchProvider({ children }: { children: ReactNode }) {
     }
   }, [match]);
 
-  // Auto-save on every field change (debounced)
+  // Keep refs to latest values so async callbacks always get fresh state
+  const matchRef = useRef(match);
+  const saveRef = useRef(save);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  matchRef.current = match;
+  saveRef.current = save;
 
   const update = useCallback(<K extends keyof MatchState>(key: K, value: MatchState[K]) => {
     if (!user) {
@@ -174,8 +178,8 @@ export function MatchProvider({ children }: { children: ReactNode }) {
     }
     setMatch((m) => ({ ...m, [key]: value }));
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => save({ quiet: true }), 2000);
-  }, [user, save]); // eslint-disable-line react-hooks/exhaustive-deps
+    autoSaveTimer.current = setTimeout(() => saveRef.current({ quiet: true }), 2000);
+  }, [user]);
 
   const reset = useCallback(() => setMatch(defaultMatch()), []);
   const load = useCallback((m: MatchState) => setMatch(m), []);
@@ -184,9 +188,9 @@ export function MatchProvider({ children }: { children: ReactNode }) {
     const next = defaultMatch();
     next.name = `Matchday ${Date.now().toString().slice(-4)}`;
     setMatch(next);
-    const saved = await save();
+    const saved = await saveRef.current();
     return saved;
-  }, [save]);
+  }, []);
 
   return (
     <MatchCtx.Provider value={{ match, update, reset, load, save, saving, canEdit, createNewMatch }}>
