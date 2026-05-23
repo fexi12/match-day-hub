@@ -268,12 +268,8 @@ function Page() {
       <Lineup />
       <Statistics />
       <Videos />
-      {user && (
-        <>
-          <Weather />
-          <Jerseys />
-        </>
-      )}
+      <Weather />
+      <Jerseys />
 
       <footer className="bg-background py-10 text-center text-sm text-muted-foreground">
         <p>© Ararat Porto FC · Forjado no Porto</p>
