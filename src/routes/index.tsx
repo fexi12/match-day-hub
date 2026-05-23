@@ -123,8 +123,7 @@ function Page() {
             </div>
             {user && (
               <>
-                <MatchesDialog />
-                <a href="/rankings" className={navBtn}>RANKINGS</a>
+                <MatchesDialog className={navBtn} />
                 {isAdmin && (
                   <Button asChild variant="outline" className="font-display tracking-wider">
                     <Link to="/admin"><ShieldCheck className="h-4 w-4 mr-2" />ADMIN</Link>
@@ -202,9 +201,7 @@ function Page() {
                   <a href="/rankings" className={navBtn}>
                     RANKINGS
                   </a>
-                  <a href="#lineup" className={navBtn}>
-                    MATCHES
-                  </a>
+                  <MatchesDialog className={navBtn} />
                 </>
               ) : (
                 <>
@@ -275,9 +272,10 @@ function Page() {
       </header>
 
       <Lineup />
+      <Weather />
       <Statistics />
       <Videos />
-      <Weather />
+  
       <Jerseys />
 
       <footer className="bg-background py-10 text-center text-sm text-muted-foreground">

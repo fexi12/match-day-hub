@@ -6,6 +6,7 @@ import { Search, Trash2, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMatch, normalizePlayers, type MatchState } from "@/lib/match-store";
 import { useAuth } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 type Row = {
@@ -18,7 +19,7 @@ type Row = {
   updated_at: string;
 };
 
-export function MatchesDialog() {
+export function MatchesDialog({ className }: { className?: string } = {}) {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState("");
@@ -96,7 +97,10 @@ export function MatchesDialog() {
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className="font-display tracking-wider min-w-[140px] px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition"
+          className={cn(
+            "font-display tracking-wider min-w-[140px] px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition",
+            className
+          )}
         >
           MATCHES
         </Button>
