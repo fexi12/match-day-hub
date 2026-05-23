@@ -123,32 +123,6 @@ export function MatchProvider({ children }: { children: ReactNode }) {
       });
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-save on every field change (debounced)
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const update = useCallback(<K extends keyof MatchState>(key: K, value: MatchState[K]) => {
-    if (!user) {
-      toast.error("Sign in to edit");
-      return;
-    }
-    setMatch((m) => ({ ...m, [key]: value }));
-    // Debounce: save 2s after last change
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => save({ quiet: true }), 2000);
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const reset = useCallback(() => setMatch(defaultMatch()), []);
-  const load = useCallback((m: MatchState) => setMatch(m), []);
-
-  const createNewMatch = useCallback(async (): Promise<string | null> => {
-    const next = defaultMatch();
-    next.name = `Matchday ${Date.now().toString().slice(-4)}`;
-    setMatch(next);
-    // Save to DB immediately and return the id
-    const saved = await save();
-    return saved;
-  }, [save]);
-
   const save = useCallback(async (opts?: { quiet?: boolean }): Promise<string | null> => {
     setSaving(true);
     try {
@@ -189,6 +163,30 @@ export function MatchProvider({ children }: { children: ReactNode }) {
       setSaving(false);
     }
   }, [match]);
+
+  // Auto-save on every field change (debounced)
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const update = useCallback(<K extends keyof MatchState>(key: K, value: MatchState[K]) => {
+    if (!user) {
+      toast.error("Sign in to edit");
+      return;
+    }
+    setMatch((m) => ({ ...m, [key]: value }));
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => save({ quiet: true }), 2000);
+  }, [user, save]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const reset = useCallback(() => setMatch(defaultMatch()), []);
+  const load = useCallback((m: MatchState) => setMatch(m), []);
+
+  const createNewMatch = useCallback(async (): Promise<string | null> => {
+    const next = defaultMatch();
+    next.name = `Matchday ${Date.now().toString().slice(-4)}`;
+    setMatch(next);
+    const saved = await save();
+    return saved;
+  }, [save]);
 
   return (
     <MatchCtx.Provider value={{ match, update, reset, load, save, saving, canEdit, createNewMatch }}>
