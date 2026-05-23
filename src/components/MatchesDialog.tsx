@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FolderOpen, Search, Trash2, Plus } from "lucide-react";
+import { Search, Trash2, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useMatch, defaultMatch, normalizePlayers, type MatchState } from "@/lib/match-store";
+import { useMatch, normalizePlayers, type MatchState } from "@/lib/match-store";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
-import { Link } from "@tanstack/react-router";
 
 type Row = {
   id: string;
@@ -73,7 +72,6 @@ export function MatchesDialog() {
       stats: (data.stats as MatchState["stats"]) ?? [],
       goals: (data.goals as MatchState["goals"]) ?? [],
       videos: (data.videos as MatchState["videos"]) ?? [],
-      referee: (data as Record<string, unknown>).referee as string ?? "",
     };
     load(m);
     setOpen(false);
@@ -91,6 +89,7 @@ export function MatchesDialog() {
     setOpen(false);
     await createNewMatch();
   };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>

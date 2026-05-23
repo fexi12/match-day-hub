@@ -105,7 +105,9 @@ function Page() {
               <a href="#videos" className="hover:text-accent transition">VIDEOS</a>
               {user && <a href="/rankings" className="hover:text-accent transition">RANKINGS</a>}
             </div>
-            {user && <MatchesDialog />}
+            {user && (
+              <a href="#lineup" className="px-6 py-3 bg-primary text-primary-foreground border-2 border-primary font-display tracking-wider">MATCHES</a>
+            )}
             {user ? (
               <>
                 {isAdmin && (
