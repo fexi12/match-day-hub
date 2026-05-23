@@ -98,7 +98,7 @@ export function MatchesDialog() {
           variant="outline"
           className="font-display tracking-wider px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition"
         >
-          <FolderOpen className="h-4 w-4 mr-2" /> MATCHES
+          MATCHES
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">

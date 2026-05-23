@@ -58,14 +58,6 @@ export function MatchHero() {
               className="h-7 px-1"
             />
           </Field>
-          <Field label="REFEREE">
-            <Input
-              value={match.referee}
-              onChange={(e) => update("referee", e.target.value)}
-              placeholder="Referee name"
-              className="h-7 px-1"
-            />
-          </Field>
           <div>
             <p className="text-[10px] tracking-[0.2em] text-muted-foreground">FORMAT</p>
             <TooltipProvider>

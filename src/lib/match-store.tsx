@@ -25,7 +25,6 @@ export type MatchState = {
   stats: Stat[];
   goals: Goal[];
   videos: Video[];
-  referee: string;
 };
 
 const DEFAULT_STATS: Stat[] = [
@@ -52,7 +51,6 @@ export const defaultMatch = (): MatchState => ({
   stats: DEFAULT_STATS,
   goals: [],
   videos: [],
-  referee: "",
 });
 
 export function normalizePlayers(raw: unknown): Player[] {
@@ -90,7 +88,6 @@ export function MatchProvider({ children }: { children: ReactNode }) {
   const [match, setMatch] = useState<MatchState>(defaultMatch());
   const [saving, setSaving] = useState(false);
 
-  // On mount, load the most recently updated match so the user resumes editing
   useEffect(() => {
     if (!user) return;
     supabase
@@ -117,7 +114,6 @@ export function MatchProvider({ children }: { children: ReactNode }) {
             stats: (data.stats as Stat[]) ?? DEFAULT_STATS,
             goals: (data.goals as Goal[]) ?? [],
             videos: (data.videos as Video[]) ?? [],
-            referee: (data as Record<string, unknown>).referee as string ?? "",
           });
         }
       });
@@ -141,7 +137,6 @@ export function MatchProvider({ children }: { children: ReactNode }) {
         stats: match.stats,
         goals: match.goals,
         videos: match.videos,
-        referee: match.referee,
       };
 
       if (match.id) {
@@ -164,7 +159,6 @@ export function MatchProvider({ children }: { children: ReactNode }) {
     }
   }, [match]);
 
-  // Keep refs to latest values so async callbacks always get fresh state
   const matchRef = useRef(match);
   const saveRef = useRef(save);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
