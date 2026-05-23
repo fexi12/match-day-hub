@@ -106,10 +106,9 @@ function Page() {
               {user && <a href="/rankings" className="hover:text-accent transition">RANKINGS</a>}
             </div>
             {user && (
-              <a href="#lineup" className="px-6 py-3 bg-primary text-primary-foreground border-2 border-primary font-display tracking-wider">MATCHES</a>
-            )}
-            {user ? (
               <>
+                <a href="#lineup" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition font-display tracking-wider">MATCHES</a>
+                <a href="/rankings" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition font-display tracking-wider">RANKINGS</a>
                 {isAdmin && (
                   <Button asChild variant="outline" className="font-display tracking-wider">
                     <Link to="/admin"><ShieldCheck className="h-4 w-4 mr-2" />ADMIN</Link>
@@ -122,7 +121,8 @@ function Page() {
                   <LogOut className="h-4 w-4 mr-2" /> SIGN OUT
                 </Button>
               </>
-            ) : (
+            )}
+            {!user && (
               <Button asChild className="font-display tracking-wider">
                 <Link to="/login"><LogIn className="h-4 w-4 mr-2" /> SIGN IN</Link>
               </Button>
@@ -186,7 +186,9 @@ function Page() {
                   <a href="/rankings" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
                     RANKINGS
                   </a>
-                  <MatchesDialog />
+                  <a href="#lineup" className="px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition">
+                    MATCHES
+                  </a>
                 </>
               ) : (
                 <>
