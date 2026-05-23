@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { Save, LogIn, LogOut, ShieldCheck, Menu } from "lucide-react";
+import { Plus, LogIn, LogOut, ShieldCheck, Menu } from "lucide-react";
 import logo from "@/assets/ararat-porto-logo.png";
 import venue from "@/assets/match-venue.jpg";
 
@@ -47,8 +47,17 @@ const navBtn =
 const navBtnActive = navBtn + " bg-primary text-primary-foreground";
 
 function Page() {
-  const { match, save, saving } = useMatch();
+  const { match, saving, createNewMatch } = useMatch();
   const { user, signOut, isAdmin } = useAuth();
+
+  const handleNewGame = async () => {
+    const ok = window.confirm(
+      "Start a new game? The current game stays saved in MATCHES. " +
+      "A fresh squad, stats, goals and videos will be created."
+    );
+    if (!ok) return;
+    await createNewMatch();
+  };
 
   const navLinks = user ? (
     <div className="flex flex-col gap-1">
@@ -75,8 +84,8 @@ function Page() {
       <Button asChild variant="outline" className="font-display tracking-wider w-full justify-center">
         <Link to="/rankings">📊 RANKINGS</Link>
       </Button>
-      <Button onClick={save} disabled={saving} className="font-display tracking-wider w-full justify-center">
-        <Save className="h-4 w-4 mr-2" /> {saving ? "SAVING…" : "SAVE"}
+      <Button onClick={handleNewGame} disabled={saving} className="font-display tracking-wider w-full justify-center">
+        <Plus className="h-4 w-4 mr-2" /> NEW GAME
       </Button>
       <Button onClick={signOut} variant="outline" className="font-display tracking-wider w-full justify-center">
         <LogOut className="h-4 w-4 mr-2" /> SIGN OUT
@@ -114,15 +123,15 @@ function Page() {
             </div>
             {user && (
               <>
-                <a href="#lineup" className={navBtn}>MATCHES</a>
+                <MatchesDialog />
                 <a href="/rankings" className={navBtn}>RANKINGS</a>
                 {isAdmin && (
                   <Button asChild variant="outline" className="font-display tracking-wider">
                     <Link to="/admin"><ShieldCheck className="h-4 w-4 mr-2" />ADMIN</Link>
                   </Button>
                 )}
-                <Button onClick={save} disabled={saving} className="font-display tracking-wider">
-                  <Save className="h-4 w-4 mr-2" /> {saving ? "SAVING…" : "SAVE"}
+                <Button onClick={handleNewGame} disabled={saving} className="font-display tracking-wider">
+                  <Plus className="h-4 w-4 mr-2" /> NEW GAME
                 </Button>
                 <Button onClick={signOut} variant="outline" className="font-display tracking-wider">
                   <LogOut className="h-4 w-4 mr-2" /> SIGN OUT
@@ -138,10 +147,10 @@ function Page() {
 
           {/* Mobile hamburger */}
           <div className="flex lg:hidden items-center gap-2">
-            {user && (
-              <Button onClick={save} disabled={saving} size="sm" className="font-display tracking-wider">
-                <Save className="h-4 w-4" />
-              </Button>
+            {user && saving && (
+              <span className="text-xs text-muted-foreground font-display tracking-wider animate-pulse">
+                Saving…
+              </span>
             )}
             <Sheet>
               <SheetTrigger asChild>

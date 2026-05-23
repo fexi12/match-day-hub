@@ -74,7 +74,7 @@ type Ctx = {
   update: <K extends keyof MatchState>(key: K, value: MatchState[K]) => void;
   reset: () => void;
   load: (m: MatchState) => void;
-  save: (opts?: { quiet?: boolean }) => Promise<string | null>;
+  save: (opts?: { quiet?: boolean; state?: MatchState }) => Promise<string | null>;
   saving: boolean;
   canEdit: boolean;
   createNewMatch: () => Promise<string | null>;
@@ -119,35 +119,39 @@ export function MatchProvider({ children }: { children: ReactNode }) {
       });
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const save = useCallback(async (opts?: { quiet?: boolean }): Promise<string | null> => {
+  const save = useCallback(async (opts?: { quiet?: boolean; state?: MatchState }): Promise<string | null> => {
+    const m = opts?.state ?? match;
     setSaving(true);
     try {
       const payload = {
-        name: match.name,
-        opponent: match.opponent,
-        match_date: match.match_date || null,
-        kickoff: match.kickoff || null,
-        duration: match.duration || null,
-        location: match.location || null,
-        format: match.format,
-        home_color: match.home_color,
-        away_color: match.away_color,
-        home_players: match.home_players,
-        away_players: match.away_players,
-        stats: match.stats,
-        goals: match.goals,
-        videos: match.videos,
+        name: m.name,
+        opponent: m.opponent,
+        match_date: m.match_date || null,
+        kickoff: m.kickoff || null,
+        duration: m.duration || null,
+        location: m.location || null,
+        format: m.format,
+        home_color: m.home_color,
+        away_color: m.away_color,
+        home_players: m.home_players,
+        away_players: m.away_players,
+        stats: m.stats,
+        goals: m.goals,
+        videos: m.videos,
+        // Bump updated_at so this game is always "the latest" loaded on next visit.
+        // (There is no DB trigger to do this automatically.)
+        updated_at: new Date().toISOString(),
       };
 
-      if (match.id) {
-        const { error } = await supabase.from("matches").update(payload).eq("id", match.id);
+      if (m.id) {
+        const { error } = await supabase.from("matches").update(payload).eq("id", m.id);
         if (error) throw error;
         if (!opts?.quiet) toast.success("Match updated");
-        return match.id;
+        return m.id;
       } else {
         const { data, error } = await supabase.from("matches").insert(payload).select().single();
         if (error) throw error;
-        setMatch((m) => ({ ...m, id: data.id }));
+        setMatch((prev) => ({ ...prev, id: data.id }));
         if (!opts?.quiet) toast.success("Match saved");
         return data.id as string;
       }
@@ -182,7 +186,10 @@ export function MatchProvider({ children }: { children: ReactNode }) {
     const next = defaultMatch();
     next.name = `Matchday ${Date.now().toString().slice(-4)}`;
     setMatch(next);
-    const saved = await saveRef.current();
+    // Pass the fresh state explicitly — `save` would otherwise read the previous
+    // match from its closure on this render tick.
+    const saved = await saveRef.current({ state: next });
+    if (saved) setMatch((m) => ({ ...m, id: saved }));
     return saved;
   }, []);
 

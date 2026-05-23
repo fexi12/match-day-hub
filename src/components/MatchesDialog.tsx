@@ -15,6 +15,7 @@ type Row = {
   match_date: string | null;
   location: string | null;
   created_at: string;
+  updated_at: string;
 };
 
 export function MatchesDialog() {
@@ -30,8 +31,8 @@ export function MatchesDialog() {
     setLoading(true);
     supabase
       .from("matches")
-      .select("id,name,opponent,match_date,location,created_at")
-      .order("created_at", { ascending: false })
+      .select("id,name,opponent,match_date,location,created_at,updated_at")
+      .order("updated_at", { ascending: false })
       .then(({ data, error }) => {
         if (error) toast.error(error.message);
         else setRows(data ?? []);
@@ -95,7 +96,7 @@ export function MatchesDialog() {
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className="font-display tracking-wider px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition"
+          className="font-display tracking-wider min-w-[140px] px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition"
         >
           MATCHES
         </Button>
