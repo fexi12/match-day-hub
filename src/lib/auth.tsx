@@ -24,12 +24,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isApproved, setIsApproved] = useState(false);
 
   useEffect(() => {
+    const consumeOAuthHash = async () => {
+      if (typeof window === "undefined") return;
+      const hash = window.location.hash || "";
+      if (!hash.includes("access_token=") || !hash.includes("refresh_token=")) return;
+
+      const params = new URLSearchParams(hash.replace(/^#/, ""));
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+      if (!access_token || !refresh_token) return;
+
+      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (!error) {
+        // Clean sensitive tokens from URL after successful session restore.
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
     });
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
+    consumeOAuthHash().finally(() => {
+      supabase.auth.getSession().then(({ data }) => {
+        setSession(data.session);
+        setLoading(false);
+      });
     });
     return () => subscription.unsubscribe();
   }, []);
