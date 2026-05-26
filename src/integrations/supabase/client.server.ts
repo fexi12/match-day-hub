@@ -22,7 +22,7 @@ function createSupabaseAdminClient() {
           ]
         : []),
     ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Lovable Cloud.`;
+    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Set Supabase env vars in Cloudflare Pages (Production/Preview as needed).`;
     console.error(`[Supabase] ${message}`);
     throw new Error(message);
   }
