@@ -34,11 +34,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const refresh_token = params.get("refresh_token");
       if (!access_token || !refresh_token) return;
 
-      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-      if (!error) {
-        // Clean sensitive tokens from URL after successful session restore.
-        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-      }
+      await supabase.auth.setSession({ access_token, refresh_token });
+      // Always scrub sensitive tokens from URL (even if setSession returns an error).
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
