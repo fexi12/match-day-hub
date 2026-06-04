@@ -2,38 +2,61 @@
 // Server-side Supabase client with service role key - bypasses RLS.
 // Use this for admin operations in server functions and server routes only.
 // For user-authenticated queries (with RLS), use the auth middleware instead.
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from './types';
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "./types";
 
-function createSupabaseAdminClient() {
+let cachedAdminClient: SupabaseClient<Database> | null = null;
+
+function describeSupabaseKey(value: string | undefined) {
+  if (!value) return "missing";
+  if (value.startsWith("eyJhbGci")) return "legacy JWT key (disabled)";
+  if (value.startsWith("sb_secret_")) return "new secret key";
+  if (value.startsWith("sb_publishable_")) return "publishable key, not a service role key";
+  return "unknown key format";
+}
+
+function getSupabaseServerConfig() {
   const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const SUPABASE_SERVICE_ROLE_KEY =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    const missing = [
-      ...(!SUPABASE_URL ? ['SUPABASE_URL|VITE_SUPABASE_URL'] : []),
-      ...(!SUPABASE_SERVICE_ROLE_KEY
-        ? [
-            'SUPABASE_SERVICE_ROLE_KEY|VITE_SUPABASE_SERVICE_ROLE_KEY',
-          ]
-        : []),
-    ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Set Supabase env vars in Cloudflare Pages (Production/Preview as needed).`;
-    console.error(`[Supabase] ${message}`);
-    throw new Error(message);
+  if (!SUPABASE_URL) {
+    throw new Error(
+      "Missing Supabase environment variable: SUPABASE_URL. Set it in Cloudflare Pages Production environment variables.",
+    );
   }
 
-  return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error(
+      "Missing Supabase environment variable: SUPABASE_SERVICE_ROLE_KEY. Set the new sb_secret_... service role key in Cloudflare Pages Production environment variables.",
+    );
+  }
+
+  if (SUPABASE_SERVICE_ROLE_KEY.startsWith("eyJhbGci")) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is using a disabled legacy JWT key. Replace it in Cloudflare Pages Production with the new sb_secret_... key from Supabase Project Settings > API.",
+    );
+  }
+
+  if (!SUPABASE_SERVICE_ROLE_KEY.startsWith("sb_secret_")) {
+    throw new Error(
+      `SUPABASE_SERVICE_ROLE_KEY has invalid format: ${describeSupabaseKey(SUPABASE_SERVICE_ROLE_KEY)}. Admin APIs require the new sb_secret_... service role key, not the publishable key.`,
+    );
+  }
+
+  return { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY };
+}
+
+export function getSupabaseAdminClient() {
+  if (cachedAdminClient) return cachedAdminClient;
+
+  const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = getSupabaseServerConfig();
+  cachedAdminClient = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: {
       storage: undefined,
       persistSession: false,
       autoRefreshToken: false,
-    }
+    },
   });
-}
 
-// Server-side Supabase client with service role key
-// SECURITY: Only use for trusted server-side operations, never expose to client code
-export const supabaseAdmin = createSupabaseAdminClient();
+  return cachedAdminClient;
+}

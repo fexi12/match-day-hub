@@ -1,9 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getSupabaseAdminClient } from "@/integrations/supabase/client.server";
 
 async function assertAdmin(userId: string) {
+  const supabaseAdmin = getSupabaseAdminClient();
   const { data, error } = await supabaseAdmin
     .from("user_roles")
     .select("role")
@@ -27,8 +28,11 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<AdminUserRow[]> => {
     await assertAdmin(context.userId);
 
-    const { data: usersRes, error: usersErr } =
-      await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
+    const supabaseAdmin = getSupabaseAdminClient();
+    const { data: usersRes, error: usersErr } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 200,
+    });
     if (usersErr) throw new Error(usersErr.message);
 
     const { data: roles, error: rolesErr } = await supabaseAdmin
@@ -58,14 +62,17 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
 export const setUserApproval = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
-    z.object({
-      user_id: z.string().uuid(),
-      approved: z.boolean(),
-    }).parse(input),
+    z
+      .object({
+        user_id: z.string().uuid(),
+        approved: z.boolean(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
 
+    const supabaseAdmin = getSupabaseAdminClient();
     if (data.approved) {
       const { error } = await supabaseAdmin
         .from("user_roles")
