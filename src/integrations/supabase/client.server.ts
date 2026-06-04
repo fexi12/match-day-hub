@@ -18,7 +18,8 @@ function describeSupabaseKey(value: string | undefined) {
 function getSupabaseServerConfig() {
   const SUPABASE_URL =
     process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const SUPABASE_SERVICE_ROLE_KEY =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
 
   if (!SUPABASE_URL) {
     throw new Error(
@@ -28,7 +29,7 @@ function getSupabaseServerConfig() {
 
   if (!SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error(
-      "Missing Supabase environment variable: SUPABASE_SERVICE_ROLE_KEY. Set the new sb_secret_... service role key in Cloudflare Pages Production environment variables.",
+      "Missing Supabase environment variable: SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY. Set the new sb_secret_... secret key in Cloudflare Pages Production environment variables.",
     );
   }
 
