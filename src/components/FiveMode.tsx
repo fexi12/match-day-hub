@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useMatch, type Player, type Stat } from "@/lib/match-store";
 import { BarChart3, Goal, Plus, Shuffle, Target, Trophy, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -14,6 +15,7 @@ import {
   maxTeamsFor,
   normalizeScore,
   playerKey,
+  playersFromNames,
   sideScore,
   standingsFor,
   uniquePlayers,
@@ -52,11 +54,15 @@ export function FiveMode() {
   const current = getFiveMode(match.stats);
   const [targetMatches, setTargetMatches] = useState(current.targetMatches || DEFAULT_MATCH_COUNT);
   const [teamCount, setTeamCount] = useState(current.teamCount || DEFAULT_TEAM_COUNT);
+  const [manualNames, setManualNames] = useState("");
 
-  const players = useMemo(
+  const squadPlayers = useMemo(
     () => uniquePlayers([...match.home_players, ...match.away_players]),
     [match.home_players, match.away_players],
   );
+  const manualPlayers = useMemo(() => playersFromNames(manualNames), [manualNames]);
+  const players = manualPlayers.length > 0 ? manualPlayers : squadPlayers;
+  const usingManualPlayers = manualPlayers.length > 0;
   const maxTeams = players.length >= TEAM_SIZE * 2 ? maxTeamsFor(players) : 0;
   const standings = useMemo(() => standingsFor(current.matches), [current.matches]);
   const totalGoals = current.matches.reduce(
@@ -186,6 +192,21 @@ export function FiveMode() {
                 />
               </div>
             </div>
+            <div className="mt-4">
+              <p className="text-[10px] tracking-[0.2em] text-muted-foreground">PLAYER NAMES</p>
+              <Textarea
+                value={manualNames}
+                onChange={(e) => setManualNames(e.target.value)}
+                placeholder={"One player per line, e.g.\nFexi\nRafa\nMiguel"}
+                className="mt-1 min-h-24 resize-y text-sm"
+                aria-label="Manual player names"
+              />
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                {usingManualPlayers
+                  ? `${players.length} manual names loaded. These names override the squad for 5x5.`
+                  : `Using ${squadPlayers.length} names from the squad. Add names above to override.`}
+              </p>
+            </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {!current.enabled && (
                 <Button
@@ -229,8 +250,9 @@ export function FiveMode() {
             </div>
             {current.matches.length === 0 ? (
               <div className="border-2 border-dashed border-primary/30 rounded-xl p-8 text-center text-muted-foreground">
-                Add at least 10 people in the squad, choose how many teams you want, then generate
-                the 5x5x5 session. Extra people are distributed across your chosen teams.
+                Add player names in the setup box above or use the squad list, choose how many teams
+                you want, then generate the 5x5x5 session. Extra people are distributed across your
+                chosen teams.
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">

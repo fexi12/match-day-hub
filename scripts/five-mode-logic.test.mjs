@@ -16,6 +16,13 @@ const mod = await import(`file://${tmp}`);
 
 const players = Array.from({ length: 14 }, (_, index) => ({ name: `Player ${index + 1}` }));
 
+const manualPlayers = mod.playersFromNames("  Fexi\n\nRafa\nFexi\nMiguel  ");
+assert.deepEqual(
+  manualPlayers.map((player) => player.name),
+  ["Fexi", "Rafa", "Miguel"],
+  "manual player names are trimmed, blank lines are ignored, and duplicates are removed",
+);
+
 const teams = mod.buildFiveTeams(players, 3);
 assert.equal(teams.length, 3, "user can choose 3 teams even when there are more than 10 people");
 assert.deepEqual(

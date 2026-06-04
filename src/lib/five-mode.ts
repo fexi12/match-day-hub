@@ -83,6 +83,14 @@ export const uniquePlayers = (players: FivePlayer[]): FivePlayer[] => {
     });
 };
 
+export const playersFromNames = (value: string): FivePlayer[] =>
+  uniquePlayers(
+    value
+      .split(/[\n,]+/)
+      .map((name) => ({ name }))
+      .filter((player) => player.name.trim()),
+  );
+
 export const maxTeamsFor = (players: FivePlayer[]) => uniquePlayers(players).length;
 
 export const normalizeTeamCount = (players: FivePlayer[], requested: number) => {
