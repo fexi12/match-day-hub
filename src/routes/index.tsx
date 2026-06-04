@@ -10,6 +10,7 @@ import { Jerseys } from "@/components/Jerseys";
 import { Statistics } from "@/components/Statistics";
 import { Videos } from "@/components/Videos";
 import { MatchHero } from "@/components/MatchHero";
+import { FiveMode } from "@/components/FiveMode";
 import { Weather } from "@/components/Weather";
 import { MatchesDialog } from "@/components/MatchesDialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -20,7 +21,10 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Ararat Porto FC — Matchday" },
-      { name: "description", content: "Matchday hub for Ararat Porto: fixture, lineup, stats and highlights." },
+      {
+        name: "description",
+        content: "Matchday hub for Ararat Porto: fixture, lineup, stats and highlights.",
+      },
       { property: "og:title", content: "Ararat Porto FC — Matchday" },
       { property: "og:description", content: "Ararat Porto FC matchday hub." },
     ],
@@ -53,7 +57,7 @@ function Page() {
   const handleNewGame = async () => {
     const ok = window.confirm(
       "Start a new game? The current game stays saved in MATCHES. " +
-      "A fresh squad, stats, goals and videos will be created."
+        "A fresh squad, stats, goals and videos will be created.",
     );
     if (!ok) return;
     await createNewMatch();
@@ -61,39 +65,95 @@ function Page() {
 
   const navLinks = user ? (
     <div className="flex flex-col gap-1">
-      <a href="#lineup" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">SQUAD</a>
-      <a href="#stats" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">STATS</a>
-      <a href="#videos" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">VIDEOS</a>
-      <a href="/rankings" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">RANKINGS</a>
+      <a
+        href="#lineup"
+        className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition"
+      >
+        SQUAD
+      </a>
+      <a
+        href="#stats"
+        className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition"
+      >
+        STATS
+      </a>
+      <a
+        href="#videos"
+        className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition"
+      >
+        VIDEOS
+      </a>
+      <a
+        href="/rankings"
+        className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition"
+      >
+        RANKINGS
+      </a>
     </div>
   ) : (
     <div className="flex flex-col gap-1">
-      <a href="#lineup" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">SQUAD</a>
-      <a href="#stats" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">STATS</a>
-      <a href="#videos" className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition">VIDEOS</a>
+      <a
+        href="#lineup"
+        className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition"
+      >
+        SQUAD
+      </a>
+      <a
+        href="#stats"
+        className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition"
+      >
+        STATS
+      </a>
+      <a
+        href="#videos"
+        className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition"
+      >
+        VIDEOS
+      </a>
     </div>
   );
 
   const actions = user ? (
     <>
       {isAdmin && (
-        <Button asChild variant="outline" className="font-display tracking-wider w-full justify-center">
-          <Link to="/admin"><ShieldCheck className="h-4 w-4 mr-2" />ADMIN</Link>
+        <Button
+          asChild
+          variant="outline"
+          className="font-display tracking-wider w-full justify-center"
+        >
+          <Link to="/admin">
+            <ShieldCheck className="h-4 w-4 mr-2" />
+            ADMIN
+          </Link>
         </Button>
       )}
-      <Button asChild variant="outline" className="font-display tracking-wider w-full justify-center">
+      <Button
+        asChild
+        variant="outline"
+        className="font-display tracking-wider w-full justify-center"
+      >
         <Link to="/rankings">📊 RANKINGS</Link>
       </Button>
-      <Button onClick={handleNewGame} disabled={saving} className="font-display tracking-wider w-full justify-center">
+      <Button
+        onClick={handleNewGame}
+        disabled={saving}
+        className="font-display tracking-wider w-full justify-center"
+      >
         <Plus className="h-4 w-4 mr-2" /> NEW GAME
       </Button>
-      <Button onClick={signOut} variant="outline" className="font-display tracking-wider w-full justify-center">
+      <Button
+        onClick={signOut}
+        variant="outline"
+        className="font-display tracking-wider w-full justify-center"
+      >
         <LogOut className="h-4 w-4 mr-2" /> SIGN OUT
       </Button>
     </>
   ) : (
     <Button asChild className="font-display tracking-wider w-full justify-center">
-      <Link to="/login"><LogIn className="h-4 w-4 mr-2" /> SIGN IN</Link>
+      <Link to="/login">
+        <LogIn className="h-4 w-4 mr-2" /> SIGN IN
+      </Link>
     </Button>
   );
 
@@ -103,7 +163,8 @@ function Page() {
         <div
           className="absolute inset-0 -z-10 opacity-[0.05]"
           style={{
-            backgroundImage: "radial-gradient(circle at 20% 20%, var(--color-foreground) 1px, transparent 1px)",
+            backgroundImage:
+              "radial-gradient(circle at 20% 20%, var(--color-foreground) 1px, transparent 1px)",
             backgroundSize: "24px 24px",
           }}
         />
@@ -116,20 +177,37 @@ function Page() {
           {/* Desktop nav */}
           <div className="hidden lg:flex items-center gap-2">
             <div className="flex gap-6 text-sm font-semibold tracking-wider mr-4">
-              <a href="#lineup" className="hover:text-accent transition">SQUAD</a>
-              <a href="#stats" className="hover:text-accent transition">STATS</a>
-              <a href="#videos" className="hover:text-accent transition">VIDEOS</a>
-              {user && <a href="/rankings" className="hover:text-accent transition">RANKINGS</a>}
+              <a href="#lineup" className="hover:text-accent transition">
+                SQUAD
+              </a>
+              <a href="#stats" className="hover:text-accent transition">
+                STATS
+              </a>
+              <a href="#videos" className="hover:text-accent transition">
+                VIDEOS
+              </a>
+              {user && (
+                <a href="/rankings" className="hover:text-accent transition">
+                  RANKINGS
+                </a>
+              )}
             </div>
             {user && (
               <>
                 <MatchesDialog className={navBtn} />
                 {isAdmin && (
                   <Button asChild variant="outline" className="font-display tracking-wider">
-                    <Link to="/admin"><ShieldCheck className="h-4 w-4 mr-2" />ADMIN</Link>
+                    <Link to="/admin">
+                      <ShieldCheck className="h-4 w-4 mr-2" />
+                      ADMIN
+                    </Link>
                   </Button>
                 )}
-                <Button onClick={handleNewGame} disabled={saving} className="font-display tracking-wider">
+                <Button
+                  onClick={handleNewGame}
+                  disabled={saving}
+                  className="font-display tracking-wider"
+                >
                   <Plus className="h-4 w-4 mr-2" /> NEW GAME
                 </Button>
                 <Button onClick={signOut} variant="outline" className="font-display tracking-wider">
@@ -139,7 +217,9 @@ function Page() {
             )}
             {!user && (
               <Button asChild className="font-display tracking-wider">
-                <Link to="/login"><LogIn className="h-4 w-4 mr-2" /> SIGN IN</Link>
+                <Link to="/login">
+                  <LogIn className="h-4 w-4 mr-2" /> SIGN IN
+                </Link>
               </Button>
             )}
           </div>
@@ -165,10 +245,10 @@ function Page() {
                 {navLinks}
                 <div className="mt-6 flex flex-col gap-2">
                   {user && (
-                  <div className="mb-2">
-                    <MatchesDialog />
-                  </div>
-                )}
+                    <div className="mb-2">
+                      <MatchesDialog />
+                    </div>
+                  )}
                   {actions}
                 </div>
               </SheetContent>
@@ -182,7 +262,8 @@ function Page() {
               MATCHDAY HUB
             </p>
             <h1 className="mt-4 text-6xl sm:text-7xl md:text-8xl leading-[0.9]">
-              Matchday<br />
+              Matchday
+              <br />
               <span className="text-accent">Awaits.</span>
             </h1>
             <p className="mt-6 max-w-lg text-lg text-muted-foreground">
@@ -225,7 +306,9 @@ function Page() {
               <div className="p-5 space-y-4">
                 <div>
                   <p className="text-[10px] tracking-[0.2em] text-muted-foreground">MATCH NAME</p>
-                  <p className="mt-1 font-display text-xl border-0 px-0 shadow-none h-auto py-1">{match.name}</p>
+                  <p className="mt-1 font-display text-xl border-0 px-0 shadow-none h-auto py-1">
+                    {match.name}
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -272,10 +355,11 @@ function Page() {
       </header>
 
       <Lineup />
+      <FiveMode />
       <Weather />
       <Statistics />
       <Videos />
-  
+
       <Jerseys />
 
       <footer className="bg-background py-10 text-center text-sm text-muted-foreground">

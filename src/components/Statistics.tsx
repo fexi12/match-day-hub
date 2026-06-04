@@ -1,14 +1,23 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
-import { useMatch, type Goal } from "@/lib/match-store";
+import { useMatch, type Goal, type Stat } from "@/lib/match-store";
+
+const FIVE_MODE_LABEL = "__5X5X5_MODE__";
+const visibleStats = (stats: Stat[]): Stat[] => stats.filter((s) => s.label !== FIVE_MODE_LABEL);
 
 export function Statistics() {
   const { match, update, canEdit } = useMatch();
   const ro = !canEdit;
+  const stats = visibleStats(match.stats);
 
   const updateStat = (i: number, side: "home" | "away", v: number) => {
-    update("stats", match.stats.map((st, idx) => (idx === i ? { ...st, [side]: v } : st)));
+    const visibleIndex = stats[i];
+    if (!visibleIndex) return;
+    update(
+      "stats",
+      match.stats.map((st) => (st.label === visibleIndex.label ? { ...st, [side]: v } : st)),
+    );
   };
 
   const homeGoals = match.goals.filter((g) => g.team === "home").length;
@@ -17,9 +26,15 @@ export function Statistics() {
   const addGoal = (team: "home" | "away") =>
     update("goals", [...match.goals, { id: Date.now(), team, minute: "", scorer: "", assist: "" }]);
   const updateGoal = (id: number, patch: Partial<Goal>) =>
-    update("goals", match.goals.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    update(
+      "goals",
+      match.goals.map((x) => (x.id === id ? { ...x, ...patch } : x)),
+    );
   const removeGoal = (id: number) =>
-    update("goals", match.goals.filter((x) => x.id !== id));
+    update(
+      "goals",
+      match.goals.filter((x) => x.id !== id),
+    );
 
   return (
     <section id="stats" className="bg-primary text-primary-foreground">
@@ -66,7 +81,7 @@ export function Statistics() {
 
         {/* Stats */}
         <div className="mt-12 flex flex-col gap-6">
-          {match.stats.map((s, i) => {
+          {stats.map((s, i) => {
             const total = s.home + s.away || 1;
             const homePct = (s.home / total) * 100;
             return (
@@ -80,7 +95,9 @@ export function Statistics() {
                     disabled={ro}
                     className="w-20 h-9 text-center bg-primary border-accent/40 text-primary-foreground"
                   />
-                  <p className="font-display tracking-[0.2em] text-accent text-center">{s.label.toUpperCase()}</p>
+                  <p className="font-display tracking-[0.2em] text-accent text-center">
+                    {s.label.toUpperCase()}
+                  </p>
                   <Input
                     type="number"
                     value={s.away}
@@ -92,7 +109,10 @@ export function Statistics() {
                 </div>
                 <div className="flex h-2 rounded-full overflow-hidden bg-accent/20">
                   <div className="bg-accent transition-all" style={{ width: `${homePct}%` }} />
-                  <div className="bg-primary-foreground/70 transition-all" style={{ width: `${100 - homePct}%` }} />
+                  <div
+                    className="bg-primary-foreground/70 transition-all"
+                    style={{ width: `${100 - homePct}%` }}
+                  />
                 </div>
               </div>
             );
