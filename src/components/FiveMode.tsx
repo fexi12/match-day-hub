@@ -2,100 +2,35 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMatch, type Player, type Stat } from "@/lib/match-store";
-import { Shuffle, Plus, Trophy, Goal, BarChart3 } from "lucide-react";
+import { BarChart3, Goal, Plus, Shuffle, Target, Trophy, Users } from "lucide-react";
 import { toast } from "sonner";
-
-const FIVE_MODE_LABEL = "__5X5X5_MODE__";
-const TEAM_SIZE = 5;
-const DEFAULT_MATCH_COUNT = 5;
-
-type FiveSide = {
-  name: string;
-  players: Player[];
-  score: number;
-};
-
-type FiveMiniMatch = {
-  id: number;
-  round: number;
-  home: FiveSide;
-  away: FiveSide;
-};
-
-type FiveModeState = {
-  enabled: boolean;
-  targetMatches: number;
-  matches: FiveMiniMatch[];
-};
+import {
+  DEFAULT_MATCH_COUNT,
+  DEFAULT_TEAM_COUNT,
+  FIVE_MODE_LABEL,
+  TEAM_SIZE,
+  buildMiniMatches,
+  emptyFiveModeState,
+  maxTeamsFor,
+  normalizeScore,
+  playerKey,
+  sideScore,
+  standingsFor,
+  uniquePlayers,
+  updatePlayerGoal,
+  type FiveMiniMatch,
+  type FiveModeState,
+  type FiveSide,
+} from "@/lib/five-mode";
 
 type FiveStat = Stat & { fiveMode?: FiveModeState };
 
-type PlayerStanding = {
-  name: string;
-  played: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  points: number;
-};
-
-const emptyState = (): FiveModeState => ({
-  enabled: false,
-  targetMatches: DEFAULT_MATCH_COUNT,
-  matches: [],
-});
-
 const getFiveMode = (stats: Stat[]): FiveModeState => {
   const row = stats.find((s) => s.label === FIVE_MODE_LABEL) as FiveStat | undefined;
-  return row?.fiveMode ?? emptyState();
+  return { ...emptyFiveModeState(), ...row?.fiveMode };
 };
 
 const visibleStats = (stats: Stat[]): Stat[] => stats.filter((s) => s.label !== FIVE_MODE_LABEL);
-
-const normalizeScore = (value: number) =>
-  Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
-
-const playerKey = (player: Player) =>
-  (player.email?.trim().toLowerCase() || player.name.trim().toLowerCase()).replace(/\s+/g, " ");
-
-const uniquePlayers = (players: Player[]): Player[] => {
-  const seen = new Set<string>();
-  return players
-    .map((p) => ({ ...p, name: p.name.trim() }))
-    .filter((p) => {
-      if (!p.name) return false;
-      const key = playerKey(p);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-};
-
-const rotate = <T,>(arr: T[], amount: number): T[] => {
-  if (arr.length === 0) return arr;
-  const shift = amount % arr.length;
-  return [...arr.slice(shift), ...arr.slice(0, shift)];
-};
-
-const buildMiniMatches = (players: Player[], targetMatches: number): FiveMiniMatch[] => {
-  const pool = uniquePlayers(players);
-  if (pool.length < TEAM_SIZE * 2) return [];
-
-  return Array.from({ length: targetMatches }).map((_, index) => {
-    const rotated = rotate(pool, index * TEAM_SIZE);
-    const home = rotated.slice(0, TEAM_SIZE);
-    const away = rotated.slice(TEAM_SIZE, TEAM_SIZE * 2);
-
-    return {
-      id: Date.now() + index,
-      round: index + 1,
-      home: { name: `Team ${index + 1}A`, players: home, score: 0 },
-      away: { name: `Team ${index + 1}B`, players: away, score: 0 },
-    };
-  });
-};
 
 const initials = (name: string) =>
   name
@@ -105,123 +40,71 @@ const initials = (name: string) =>
     .map((x) => x[0]?.toUpperCase())
     .join("") || "?";
 
-const standingsFor = (matches: FiveMiniMatch[]): PlayerStanding[] => {
-  const table = new Map<string, PlayerStanding>();
-
-  const ensure = (player: Player) => {
-    const key = playerKey(player);
-    if (!table.has(key)) {
-      table.set(key, {
-        name: player.name,
-        played: 0,
-        wins: 0,
-        draws: 0,
-        losses: 0,
-        goalsFor: 0,
-        goalsAgainst: 0,
-        points: 0,
-      });
-    }
-    return table.get(key)!;
-  };
-
-  matches.forEach((match) => {
-    const homeScore = normalizeScore(match.home.score);
-    const awayScore = normalizeScore(match.away.score);
-    const homeWon = homeScore > awayScore;
-    const awayWon = awayScore > homeScore;
-
-    match.home.players.forEach((player) => {
-      const row = ensure(player);
-      row.played += 1;
-      row.goalsFor += homeScore;
-      row.goalsAgainst += awayScore;
-      if (homeWon) {
-        row.wins += 1;
-        row.points += 3;
-      } else if (awayWon) {
-        row.losses += 1;
-      } else {
-        row.draws += 1;
-        row.points += 1;
-      }
-    });
-
-    match.away.players.forEach((player) => {
-      const row = ensure(player);
-      row.played += 1;
-      row.goalsFor += awayScore;
-      row.goalsAgainst += homeScore;
-      if (awayWon) {
-        row.wins += 1;
-        row.points += 3;
-      } else if (homeWon) {
-        row.losses += 1;
-      } else {
-        row.draws += 1;
-        row.points += 1;
-      }
-    });
-  });
-
-  return [...table.values()].sort(
-    (a, b) =>
-      b.points - a.points ||
-      b.goalsFor - b.goalsAgainst - (a.goalsFor - a.goalsAgainst) ||
-      b.goalsFor - a.goalsFor ||
-      a.name.localeCompare(b.name),
-  );
-};
+const goalValue = (side: FiveSide, player: Player) =>
+  side.goals?.find((row) => row.playerName === player.name)?.goals ?? 0;
 
 export function FiveMode() {
   const { match, update, canEdit } = useMatch();
   const current = getFiveMode(match.stats);
   const [targetMatches, setTargetMatches] = useState(current.targetMatches || DEFAULT_MATCH_COUNT);
+  const [teamCount, setTeamCount] = useState(current.teamCount || DEFAULT_TEAM_COUNT);
 
   const players = useMemo(
     () => uniquePlayers([...match.home_players, ...match.away_players]),
     [match.home_players, match.away_players],
   );
+  const maxTeams = maxTeamsFor(players);
   const standings = useMemo(() => standingsFor(current.matches), [current.matches]);
   const totalGoals = current.matches.reduce(
-    (sum, item) => sum + normalizeScore(item.home.score) + normalizeScore(item.away.score),
+    (sum, item) => sum + sideScore(item.home) + sideScore(item.away),
     0,
   );
-  const maxPlayerGoals = Math.max(1, ...standings.map((row) => row.goalsFor));
+  const maxPlayerGoals = Math.max(1, ...standings.map((row) => row.goals));
 
   const saveFiveMode = (next: FiveModeState) => {
     const cleaned = visibleStats(match.stats);
+    const nextGoals = next.matches.reduce(
+      (sum, item) => sum + sideScore(item.home) + sideScore(item.away),
+      0,
+    );
     const payload: FiveStat = {
       label: FIVE_MODE_LABEL,
       home: next.matches.length,
-      away: totalGoals,
+      away: nextGoals,
       fiveMode: next,
     };
     update("stats", [...cleaned, payload]);
   };
 
   const enableMode = () => {
-    saveFiveMode({ ...current, enabled: true, targetMatches });
+    saveFiveMode({ ...current, enabled: true, targetMatches, teamCount });
   };
 
   const generate = () => {
-    if (players.length < TEAM_SIZE * 2) {
-      toast.error("Need at least 10 players to generate 5v5 matches.");
+    if (maxTeams < 2) {
+      toast.error("Need at least 10 players to generate 5v5 teams.");
       return;
     }
 
-    const count = Math.max(1, targetMatches || DEFAULT_MATCH_COUNT);
+    const teams = Math.min(maxTeams, Math.max(2, normalizeScore(teamCount || DEFAULT_TEAM_COUNT)));
+    const count = Math.max(1, targetMatches || (teams * (teams - 1)) / 2);
+    const matches = buildMiniMatches(players, teams, count);
+
     saveFiveMode({
       enabled: true,
       targetMatches: count,
-      matches: buildMiniMatches(players, count),
+      teamCount: teams,
+      matches,
     });
-    toast.success(`Generated ${count} 5v5 matches`);
+    setTeamCount(teams);
+    setTargetMatches(count);
+    toast.success(`Generated ${teams} teams and ${count} mini-matches`);
   };
 
   const addMatch = () => {
+    const teams = current.teamCount || teamCount || DEFAULT_TEAM_COUNT;
     const nextRound = current.matches.length + 1;
-    const extra = buildMiniMatches(players, nextRound).at(-1);
+    const extra = buildMiniMatches(players, teams, nextRound).at(-1);
     if (!extra) {
       toast.error("Need at least 10 players to add a 5v5 match.");
       return;
@@ -229,20 +112,17 @@ export function FiveMode() {
     saveFiveMode({
       ...current,
       enabled: true,
+      teamCount: teams,
       targetMatches: nextRound,
       matches: [...current.matches, extra],
     });
     setTargetMatches(nextRound);
   };
 
-  const updateScore = (id: number, side: "home" | "away", score: number) => {
+  const updateGoal = (id: number, side: "home" | "away", playerName: string, goals: number) => {
     saveFiveMode({
       ...current,
-      matches: current.matches.map((item) =>
-        item.id === id
-          ? { ...item, [side]: { ...item[side], score: normalizeScore(score) } }
-          : item,
-      ),
+      matches: updatePlayerGoal(current.matches, id, side, playerName, goals),
     });
   };
 
@@ -256,17 +136,31 @@ export function FiveMode() {
             </p>
             <h2 className="mt-2 text-5xl md:text-6xl">5x5x5 Mode</h2>
             <p className="mt-4 max-w-2xl text-muted-foreground">
-              Generate short 5v5 local games from the squad, record every score, and get an instant
-              leaderboard + goal graph across the whole session.
+              Pick how many 5-player teams you want, generate the local mini-matches, and record
+              goals for each individual player. The match score and leaderboard update from those
+              player goals.
             </p>
           </div>
 
-          <div className="border-2 border-primary rounded-xl bg-card p-4 min-w-[260px]">
+          <div className="border-2 border-primary rounded-xl bg-card p-4 min-w-[300px]">
             <p className="text-xs tracking-[0.25em] text-muted-foreground">SESSION SETUP</p>
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="mt-3 grid grid-cols-3 gap-3">
               <div>
                 <p className="text-[10px] tracking-[0.2em] text-muted-foreground">PLAYERS</p>
                 <p className="font-display text-3xl">{players.length}</p>
+              </div>
+              <div>
+                <p className="text-[10px] tracking-[0.2em] text-muted-foreground">TEAMS</p>
+                <Input
+                  type="number"
+                  min={2}
+                  max={Math.max(2, maxTeams)}
+                  value={teamCount}
+                  onChange={(e) => setTeamCount(Number(e.target.value))}
+                  disabled={!canEdit}
+                  className="mt-1 h-9 font-display text-lg"
+                />
+                <p className="mt-1 text-[10px] text-muted-foreground">max {maxTeams || 0}</p>
               </div>
               <div>
                 <p className="text-[10px] tracking-[0.2em] text-muted-foreground">MATCHES</p>
@@ -309,7 +203,7 @@ export function FiveMode() {
             </div>
             {!canEdit && (
               <p className="mt-3 text-xs text-muted-foreground italic">
-                Sign in with editor access to generate and edit scores.
+                Sign in with editor access to generate teams and edit player goals.
               </p>
             )}
           </div>
@@ -319,11 +213,12 @@ export function FiveMode() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Goal className="h-5 w-5 text-accent" />
-              <h3 className="text-2xl">Match Scores</h3>
+              <h3 className="text-2xl">Player Goals</h3>
             </div>
             {current.matches.length === 0 ? (
               <div className="border-2 border-dashed border-primary/30 rounded-xl p-8 text-center text-muted-foreground">
-                Add at least 10 players in the squad, then generate the 5x5x5 match list.
+                Add at least 10 players in the squad, choose how many teams, then generate the 5x5x5
+                session. With 15 players you can choose 3 teams.
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
@@ -332,7 +227,7 @@ export function FiveMode() {
                     key={miniMatch.id}
                     miniMatch={miniMatch}
                     canEdit={canEdit}
-                    onScore={updateScore}
+                    onGoal={updateGoal}
                   />
                 ))}
               </div>
@@ -347,7 +242,7 @@ export function FiveMode() {
               </div>
               {standings.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic">
-                  Scores will create the table automatically.
+                  Player goal inputs will create the table automatically.
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -362,7 +257,7 @@ export function FiveMode() {
                       <div className="min-w-0">
                         <p className="font-semibold truncate">{row.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {row.wins}W {row.draws}D {row.losses}L · GD{" "}
+                          {row.goals} goals · {row.wins}W {row.draws}D {row.losses}L · GD{" "}
                           {row.goalsFor - row.goalsAgainst}
                         </p>
                       </div>
@@ -379,7 +274,7 @@ export function FiveMode() {
                 <h3 className="text-2xl text-primary-foreground">Goals Graph</h3>
               </div>
               <div className="grid grid-cols-3 gap-3 text-center mb-5">
-                <Metric label="Games" value={current.matches.length} />
+                <Metric label="Teams" value={current.teamCount || teamCount} />
                 <Metric label="Goals" value={totalGoals} />
                 <Metric
                   label="Avg"
@@ -393,12 +288,12 @@ export function FiveMode() {
                   <div key={row.name}>
                     <div className="mb-1 flex justify-between gap-3 text-xs">
                       <span className="truncate">{row.name}</span>
-                      <span>{row.goalsFor} GF</span>
+                      <span>{row.goals} goals</span>
                     </div>
                     <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
                       <div
                         className="h-full bg-accent transition-all"
-                        style={{ width: `${Math.max(6, (row.goalsFor / maxPlayerGoals) * 100)}%` }}
+                        style={{ width: `${Math.max(6, (row.goals / maxPlayerGoals) * 100)}%` }}
                       />
                     </div>
                   </div>
@@ -415,58 +310,94 @@ export function FiveMode() {
 function MiniMatchCard({
   miniMatch,
   canEdit,
-  onScore,
+  onGoal,
 }: {
   miniMatch: FiveMiniMatch;
   canEdit: boolean;
-  onScore: (id: number, side: "home" | "away", score: number) => void;
+  onGoal: (id: number, side: "home" | "away", playerName: string, goals: number) => void;
 }) {
+  const homeScore = sideScore(miniMatch.home);
+  const awayScore = sideScore(miniMatch.away);
+
   return (
     <div className="border-2 border-primary rounded-xl bg-card p-4">
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs tracking-[0.25em] text-muted-foreground">MATCH {miniMatch.round}</p>
         <div className="flex items-center gap-2 font-display text-3xl">
-          <Input
-            type="number"
-            min={0}
-            value={miniMatch.home.score}
-            onChange={(e) => onScore(miniMatch.id, "home", Number(e.target.value))}
-            disabled={!canEdit}
-            className="h-11 w-16 text-center text-2xl font-display"
-          />
+          <span className="rounded-lg border border-border px-3 py-1">{homeScore}</span>
           <span className="text-accent">:</span>
-          <Input
-            type="number"
-            min={0}
-            value={miniMatch.away.score}
-            onChange={(e) => onScore(miniMatch.id, "away", Number(e.target.value))}
-            disabled={!canEdit}
-            className="h-11 w-16 text-center text-2xl font-display"
-          />
+          <span className="rounded-lg border border-border px-3 py-1">{awayScore}</span>
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <TeamBlock title={miniMatch.home.name} players={miniMatch.home.players} />
-        <TeamBlock title={miniMatch.away.name} players={miniMatch.away.players} />
+        <TeamGoalBlock
+          title={miniMatch.home.name}
+          side="home"
+          matchId={miniMatch.id}
+          team={miniMatch.home}
+          canEdit={canEdit}
+          onGoal={onGoal}
+        />
+        <TeamGoalBlock
+          title={miniMatch.away.name}
+          side="away"
+          matchId={miniMatch.id}
+          team={miniMatch.away}
+          canEdit={canEdit}
+          onGoal={onGoal}
+        />
       </div>
     </div>
   );
 }
 
-function TeamBlock({ title, players }: { title: string; players: Player[] }) {
+function TeamGoalBlock({
+  title,
+  team,
+  side,
+  matchId,
+  canEdit,
+  onGoal,
+}: {
+  title: string;
+  team: FiveSide;
+  side: "home" | "away";
+  matchId: number;
+  canEdit: boolean;
+  onGoal: (id: number, side: "home" | "away", playerName: string, goals: number) => void;
+}) {
   return (
     <div className="rounded-lg border border-border p-3">
-      <p className="mb-3 font-display tracking-wider">{title}</p>
-      <div className="flex flex-wrap gap-2">
-        {players.map((player) => (
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="font-display tracking-wider">{title}</p>
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Users className="h-3 w-3" /> {team.players.length} players
+        </div>
+      </div>
+      <div className="space-y-2">
+        {team.players.map((player) => (
           <div
             key={playerKey(player)}
-            className="flex items-center gap-2 rounded-full bg-secondary px-2 py-1 text-sm"
+            className="grid grid-cols-[1fr_74px] items-center gap-2 rounded-lg bg-secondary p-2"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary font-display text-xs text-primary-foreground">
-              {initials(player.name)}
-            </span>
-            <span className="max-w-[150px] truncate">{player.name}</span>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs text-primary-foreground">
+                {initials(player.name)}
+              </span>
+              <span className="truncate text-sm">{player.name}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Target className="h-3 w-3 text-accent" />
+              <Input
+                type="number"
+                min={0}
+                value={goalValue(team, player)}
+                onChange={(e) => onGoal(matchId, side, player.name, Number(e.target.value))}
+                disabled={!canEdit}
+                className="h-8 w-12 text-center font-display"
+                aria-label={`${player.name} goals`}
+              />
+            </div>
           </div>
         ))}
       </div>
