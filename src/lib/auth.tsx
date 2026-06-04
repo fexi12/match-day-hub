@@ -92,19 +92,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // PKCE flow callback (?code=...)
+      // This app uses the implicit browser OAuth flow. A stray ?code= callback means
+      // the provider/Supabase flow is out of sync; do not try a PKCE exchange without
+      // a guaranteed verifier because it breaks with "code verifier not found".
       const qs = new URLSearchParams(search);
       const code = qs.get("code");
       if (code) {
-        try {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) {
-            console.warn("[auth] Failed to exchange OAuth code:", error);
-            toast.error(error.message || "Google sign-in failed. Please try again.");
-          }
-        } finally {
-          scrubOAuthCallbackUrl();
-        }
+        console.warn("[auth] Unexpected OAuth code callback in implicit flow");
+        toast.error("Google sign-in flow was out of sync. Please try again.");
+        scrubOAuthCallbackUrl();
       }
     };
 
