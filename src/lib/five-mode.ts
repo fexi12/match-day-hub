@@ -14,6 +14,11 @@ export type PlayerGoal = {
   goals: number;
 };
 
+export type PlayerAssist = {
+  playerName: string;
+  assists: number;
+};
+
 export type FiveTeam = {
   name: string;
   players: FivePlayer[];
@@ -22,6 +27,7 @@ export type FiveTeam = {
 export type FiveSide = FiveTeam & {
   score: number;
   goals: PlayerGoal[];
+  assists: PlayerAssist[];
 };
 
 export type FiveMiniMatch = {
@@ -45,6 +51,7 @@ export type PlayerStanding = {
   draws: number;
   losses: number;
   goals: number;
+  assists: number;
   goalsFor: number;
   goalsAgainst: number;
   points: number;
@@ -76,12 +83,12 @@ export const uniquePlayers = (players: FivePlayer[]): FivePlayer[] => {
     });
 };
 
-export const maxTeamsFor = (players: FivePlayer[]) =>
-  Math.floor(uniquePlayers(players).length / TEAM_SIZE);
+export const maxTeamsFor = (players: FivePlayer[]) => uniquePlayers(players).length;
 
 export const normalizeTeamCount = (players: FivePlayer[], requested: number) => {
-  const maxTeams = maxTeamsFor(players);
-  if (maxTeams < 2) return 0;
+  const pool = uniquePlayers(players);
+  const maxTeams = pool.length;
+  if (pool.length < TEAM_SIZE * 2 || maxTeams < 2) return 0;
   return Math.min(maxTeams, Math.max(2, normalizeScore(requested || DEFAULT_TEAM_COUNT)));
 };
 
@@ -90,16 +97,28 @@ export const buildFiveTeams = (players: FivePlayer[], requestedTeamCount: number
   const teamCount = normalizeTeamCount(pool, requestedTeamCount);
   if (teamCount < 2) return [];
 
+  const baseSize = Math.floor(pool.length / teamCount);
+  const extraPlayers = pool.length % teamCount;
+  let cursor = 0;
+
   return Array.from({ length: teamCount }).map((_, index) => {
-    const start = index * TEAM_SIZE;
+    const size = baseSize + (index < extraPlayers ? 1 : 0);
+    const playersForTeam = pool.slice(cursor, cursor + size);
+    cursor += size;
+
     return {
       name: `Team ${index + 1}`,
-      players: pool.slice(start, start + TEAM_SIZE),
+      players: playersForTeam,
     };
   });
 };
 
-const sideFromTeam = (team: FiveTeam): FiveSide => ({ ...team, score: 0, goals: [] });
+const sideFromTeam = (team: FiveTeam): FiveSide => ({
+  ...team,
+  score: 0,
+  goals: [],
+  assists: [],
+});
 
 const pairTeams = (teams: FiveTeam[]) => {
   const pairs: Array<[FiveTeam, FiveTeam]> = [];
@@ -163,8 +182,32 @@ export const updatePlayerGoal = (
     return { ...match, [side]: nextSide };
   });
 
+export const updatePlayerAssist = (
+  matches: FiveMiniMatch[],
+  matchId: number,
+  side: "home" | "away",
+  playerName: string,
+  assists: number,
+): FiveMiniMatch[] =>
+  matches.map((match) => {
+    if (match.id !== matchId) return match;
+
+    const cleanAssists = normalizeScore(assists);
+    const currentSide = match[side];
+    const withoutPlayer = (currentSide.assists ?? []).filter(
+      (row) => row.playerName !== playerName,
+    );
+    const nextAssists =
+      cleanAssists > 0 ? [...withoutPlayer, { playerName, assists: cleanAssists }] : withoutPlayer;
+
+    return { ...match, [side]: { ...currentSide, assists: nextAssists } };
+  });
+
 const goalsForPlayer = (side: FiveSide, player: FivePlayer) =>
   (side.goals ?? []).find((row) => row.playerName === player.name)?.goals ?? 0;
+
+const assistsForPlayer = (side: FiveSide, player: FivePlayer) =>
+  (side.assists ?? []).find((row) => row.playerName === player.name)?.assists ?? 0;
 
 export const standingsFor = (matches: FiveMiniMatch[]): PlayerStanding[] => {
   const table = new Map<string, PlayerStanding>();
@@ -179,6 +222,7 @@ export const standingsFor = (matches: FiveMiniMatch[]): PlayerStanding[] => {
         draws: 0,
         losses: 0,
         goals: 0,
+        assists: 0,
         goalsFor: 0,
         goalsAgainst: 0,
         points: 0,
@@ -197,6 +241,7 @@ export const standingsFor = (matches: FiveMiniMatch[]): PlayerStanding[] => {
       const row = ensure(player);
       row.played += 1;
       row.goals += goalsForPlayer(match.home, player);
+      row.assists += assistsForPlayer(match.home, player);
       row.goalsFor += homeScore;
       row.goalsAgainst += awayScore;
       if (homeWon) {
@@ -214,6 +259,7 @@ export const standingsFor = (matches: FiveMiniMatch[]): PlayerStanding[] => {
       const row = ensure(player);
       row.played += 1;
       row.goals += goalsForPlayer(match.away, player);
+      row.assists += assistsForPlayer(match.away, player);
       row.goalsFor += awayScore;
       row.goalsAgainst += homeScore;
       if (awayWon) {
@@ -232,6 +278,7 @@ export const standingsFor = (matches: FiveMiniMatch[]): PlayerStanding[] => {
     (a, b) =>
       b.points - a.points ||
       b.goals - a.goals ||
+      b.assists - a.assists ||
       b.goalsFor - b.goalsAgainst - (a.goalsFor - a.goalsAgainst) ||
       a.name.localeCompare(b.name),
   );

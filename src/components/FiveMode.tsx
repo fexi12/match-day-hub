@@ -17,6 +17,7 @@ import {
   sideScore,
   standingsFor,
   uniquePlayers,
+  updatePlayerAssist,
   updatePlayerGoal,
   type FiveMiniMatch,
   type FiveModeState,
@@ -43,6 +44,9 @@ const initials = (name: string) =>
 const goalValue = (side: FiveSide, player: Player) =>
   side.goals?.find((row) => row.playerName === player.name)?.goals ?? 0;
 
+const assistValue = (side: FiveSide, player: Player) =>
+  side.assists?.find((row) => row.playerName === player.name)?.assists ?? 0;
+
 export function FiveMode() {
   const { match, update, canEdit } = useMatch();
   const current = getFiveMode(match.stats);
@@ -53,12 +57,13 @@ export function FiveMode() {
     () => uniquePlayers([...match.home_players, ...match.away_players]),
     [match.home_players, match.away_players],
   );
-  const maxTeams = maxTeamsFor(players);
+  const maxTeams = players.length >= TEAM_SIZE * 2 ? maxTeamsFor(players) : 0;
   const standings = useMemo(() => standingsFor(current.matches), [current.matches]);
   const totalGoals = current.matches.reduce(
     (sum, item) => sum + sideScore(item.home) + sideScore(item.away),
     0,
   );
+  const totalAssists = standings.reduce((sum, row) => sum + row.assists, 0);
   const maxPlayerGoals = Math.max(1, ...standings.map((row) => row.goals));
 
   const saveFiveMode = (next: FiveModeState) => {
@@ -126,6 +131,13 @@ export function FiveMode() {
     });
   };
 
+  const updateAssist = (id: number, side: "home" | "away", playerName: string, assists: number) => {
+    saveFiveMode({
+      ...current,
+      matches: updatePlayerAssist(current.matches, id, side, playerName, assists),
+    });
+  };
+
   return (
     <section id="five-mode" className="bg-background border-b border-border">
       <div className="mx-auto max-w-7xl px-6 py-20">
@@ -136,9 +148,9 @@ export function FiveMode() {
             </p>
             <h2 className="mt-2 text-5xl md:text-6xl">5x5x5 Mode</h2>
             <p className="mt-4 max-w-2xl text-muted-foreground">
-              Pick how many 5-player teams you want, generate the local mini-matches, and record
-              goals for each individual player. The match score and leaderboard update from those
-              player goals.
+              Choose how many teams you want, generate the local mini-matches, and record goals +
+              assists for each individual player. The match score updates from player goals; assists
+              feed the leaderboard.
             </p>
           </div>
 
@@ -203,7 +215,7 @@ export function FiveMode() {
             </div>
             {!canEdit && (
               <p className="mt-3 text-xs text-muted-foreground italic">
-                Sign in with editor access to generate teams and edit player goals.
+                Sign in with editor access to generate teams and edit player goals/assists.
               </p>
             )}
           </div>
@@ -213,12 +225,12 @@ export function FiveMode() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Goal className="h-5 w-5 text-accent" />
-              <h3 className="text-2xl">Player Goals</h3>
+              <h3 className="text-2xl">Player Goals & Assists</h3>
             </div>
             {current.matches.length === 0 ? (
               <div className="border-2 border-dashed border-primary/30 rounded-xl p-8 text-center text-muted-foreground">
-                Add at least 10 players in the squad, choose how many teams, then generate the 5x5x5
-                session. With 15 players you can choose 3 teams.
+                Add at least 10 people in the squad, choose how many teams you want, then generate
+                the 5x5x5 session. Extra people are distributed across your chosen teams.
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
@@ -228,6 +240,7 @@ export function FiveMode() {
                     miniMatch={miniMatch}
                     canEdit={canEdit}
                     onGoal={updateGoal}
+                    onAssist={updateAssist}
                   />
                 ))}
               </div>
@@ -242,7 +255,7 @@ export function FiveMode() {
               </div>
               {standings.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic">
-                  Player goal inputs will create the table automatically.
+                  Player goal + assist inputs will create the table automatically.
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -257,8 +270,8 @@ export function FiveMode() {
                       <div className="min-w-0">
                         <p className="font-semibold truncate">{row.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {row.goals} goals · {row.wins}W {row.draws}D {row.losses}L · GD{" "}
-                          {row.goalsFor - row.goalsAgainst}
+                          {row.goals}G · {row.assists}A · {row.wins}W {row.draws}D {row.losses}L ·
+                          GD {row.goalsFor - row.goalsAgainst}
                         </p>
                       </div>
                       <span className="font-display text-2xl text-accent">{row.points}</span>
@@ -276,19 +289,16 @@ export function FiveMode() {
               <div className="grid grid-cols-3 gap-3 text-center mb-5">
                 <Metric label="Teams" value={current.teamCount || teamCount} />
                 <Metric label="Goals" value={totalGoals} />
-                <Metric
-                  label="Avg"
-                  value={
-                    current.matches.length ? (totalGoals / current.matches.length).toFixed(1) : "0"
-                  }
-                />
+                <Metric label="Assists" value={totalAssists} />
               </div>
               <div className="space-y-3">
                 {standings.slice(0, 8).map((row) => (
                   <div key={row.name}>
                     <div className="mb-1 flex justify-between gap-3 text-xs">
                       <span className="truncate">{row.name}</span>
-                      <span>{row.goals} goals</span>
+                      <span>
+                        {row.goals}G / {row.assists}A
+                      </span>
                     </div>
                     <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
                       <div
@@ -311,10 +321,12 @@ function MiniMatchCard({
   miniMatch,
   canEdit,
   onGoal,
+  onAssist,
 }: {
   miniMatch: FiveMiniMatch;
   canEdit: boolean;
   onGoal: (id: number, side: "home" | "away", playerName: string, goals: number) => void;
+  onAssist: (id: number, side: "home" | "away", playerName: string, assists: number) => void;
 }) {
   const homeScore = sideScore(miniMatch.home);
   const awayScore = sideScore(miniMatch.away);
@@ -337,6 +349,7 @@ function MiniMatchCard({
           team={miniMatch.home}
           canEdit={canEdit}
           onGoal={onGoal}
+          onAssist={onAssist}
         />
         <TeamGoalBlock
           title={miniMatch.away.name}
@@ -345,6 +358,7 @@ function MiniMatchCard({
           team={miniMatch.away}
           canEdit={canEdit}
           onGoal={onGoal}
+          onAssist={onAssist}
         />
       </div>
     </div>
@@ -358,6 +372,7 @@ function TeamGoalBlock({
   matchId,
   canEdit,
   onGoal,
+  onAssist,
 }: {
   title: string;
   team: FiveSide;
@@ -365,6 +380,7 @@ function TeamGoalBlock({
   matchId: number;
   canEdit: boolean;
   onGoal: (id: number, side: "home" | "away", playerName: string, goals: number) => void;
+  onAssist: (id: number, side: "home" | "away", playerName: string, assists: number) => void;
 }) {
   return (
     <div className="rounded-lg border border-border p-3">
@@ -378,7 +394,7 @@ function TeamGoalBlock({
         {team.players.map((player) => (
           <div
             key={playerKey(player)}
-            className="grid grid-cols-[1fr_74px] items-center gap-2 rounded-lg bg-secondary p-2"
+            className="grid grid-cols-[1fr_140px] items-center gap-2 rounded-lg bg-secondary p-2"
           >
             <div className="flex min-w-0 items-center gap-2">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs text-primary-foreground">
@@ -386,17 +402,31 @@ function TeamGoalBlock({
               </span>
               <span className="truncate text-sm">{player.name}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Target className="h-3 w-3 text-accent" />
-              <Input
-                type="number"
-                min={0}
-                value={goalValue(team, player)}
-                onChange={(e) => onGoal(matchId, side, player.name, Number(e.target.value))}
-                disabled={!canEdit}
-                className="h-8 w-12 text-center font-display"
-                aria-label={`${player.name} goals`}
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-1">
+                <Target className="h-3 w-3 text-accent" />
+                <Input
+                  type="number"
+                  min={0}
+                  value={goalValue(team, player)}
+                  onChange={(e) => onGoal(matchId, side, player.name, Number(e.target.value))}
+                  disabled={!canEdit}
+                  className="h-8 w-11 text-center font-display"
+                  aria-label={`${player.name} goals`}
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-display text-accent">A</span>
+                <Input
+                  type="number"
+                  min={0}
+                  value={assistValue(team, player)}
+                  onChange={(e) => onAssist(matchId, side, player.name, Number(e.target.value))}
+                  disabled={!canEdit}
+                  className="h-8 w-11 text-center font-display"
+                  aria-label={`${player.name} assists`}
+                />
+              </div>
             </div>
           </div>
         ))}
