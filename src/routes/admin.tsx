@@ -19,6 +19,12 @@ export const Route = createFileRoute("/admin")({
   ),
 });
 
+function getErrorMessage(e: unknown): string {
+  if (e instanceof Error && e.message) return e.message;
+  if (typeof e === "string" && e.trim()) return e;
+  return "Something went wrong. Please try again.";
+}
+
 function AdminPage() {
   const { user, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
@@ -27,7 +33,8 @@ function AdminPage() {
 
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  const [loadingList, setLoadingList] = useState(true);
+  const [loadingList, setLoadingList] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -35,10 +42,20 @@ function AdminPage() {
       navigate({ to: "/login" });
       return;
     }
-    if (!isAdmin) return;
+    if (!isAdmin) {
+      setLoadingList(false);
+      return;
+    }
+
+    setLoadingList(true);
+    setLoadError(null);
     list()
       .then(setUsers)
-      .catch((e: Error) => toast.error(e.message))
+      .catch((e: unknown) => {
+        const message = getErrorMessage(e);
+        setLoadError(message);
+        toast.error(message);
+      })
       .finally(() => setLoadingList(false));
   }, [user, isAdmin, loading, list, navigate]);
 
@@ -65,7 +82,9 @@ function AdminPage() {
         <div className="text-center">
           <h1 className="font-display text-3xl mb-2">Admins only</h1>
           <p className="text-muted-foreground mb-6">You don't have access to this page.</p>
-          <Button asChild><Link to="/">Go home</Link></Button>
+          <Button asChild>
+            <Link to="/">Go home</Link>
+          </Button>
         </div>
       </main>
     );
@@ -79,27 +98,42 @@ function AdminPage() {
             <ShieldCheck className="h-6 w-6 text-accent" />
             <h1 className="font-display text-2xl tracking-wider">Editor Approvals</h1>
           </div>
-          <Button asChild variant="outline"><Link to="/"><ArrowLeft className="h-4 w-4 mr-2" />Back</Link></Button>
+          <Button asChild variant="outline">
+            <Link to="/">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Link>
+          </Button>
         </div>
       </header>
 
       <section className="mx-auto max-w-4xl px-6 py-10">
         <p className="text-sm text-muted-foreground mb-6">
-          Approve users to let them edit matches, lineups, stats and videos. Public visitors can always view.
+          Approve users to let them edit matches, lineups, stats and videos. Public visitors can
+          always view.
         </p>
 
-        {loadingList ? (
+        {loadError ? (
+          <div className="rounded-lg border-2 border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+            <p className="font-medium mb-1">Could not load admin users.</p>
+            <p>{loadError}</p>
+          </div>
+        ) : loadingList ? (
           <p className="text-muted-foreground">Loading users…</p>
         ) : users.length === 0 ? (
           <p className="text-muted-foreground italic">No users yet.</p>
         ) : (
           <div className="flex flex-col gap-2">
             {users.map((u) => (
-              <div key={u.id} className="flex items-center gap-4 border-2 border-border rounded-lg p-4">
+              <div
+                key={u.id}
+                className="flex items-center gap-4 border-2 border-border rounded-lg p-4"
+              >
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{u.email ?? "(no email)"}</p>
                   <p className="text-xs text-muted-foreground">
-                    {u.is_admin ? "Admin · " : ""}joined {new Date(u.created_at).toLocaleDateString()}
+                    {u.is_admin ? "Admin · " : ""}joined{" "}
+                    {new Date(u.created_at).toLocaleDateString()}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
