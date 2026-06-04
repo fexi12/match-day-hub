@@ -1,12 +1,27 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  ReactNode,
+} from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import type { Format } from "@/lib/match-formats";
 
-export type Format = "5v5" | "7v7" | "8v8" | "11v11";
+export type { Format };
 export type Player = { name: string; photo_url?: string; email?: string };
 export type Stat = { label: string; home: number; away: number };
-export type Goal = { id: number; team: "home" | "away"; minute: string; scorer: string; assist: string };
+export type Goal = {
+  id: number;
+  team: "home" | "away";
+  minute: string;
+  scorer: string;
+  assist: string;
+};
 export type Video = { id: number; title: string; url: string };
 
 export type MatchState = {
@@ -122,49 +137,52 @@ export function MatchProvider({ children }: { children: ReactNode }) {
       });
   }, [user]); // re-fetch on mount and whenever auth state changes
 
-  const save = useCallback(async (opts?: { quiet?: boolean; state?: MatchState }): Promise<string | null> => {
-    const m = opts?.state ?? match;
-    setSaving(true);
-    try {
-      const payload = {
-        name: m.name,
-        opponent: m.opponent,
-        match_date: m.match_date || null,
-        kickoff: m.kickoff || null,
-        duration: m.duration || null,
-        location: m.location || null,
-        format: m.format,
-        home_color: m.home_color,
-        away_color: m.away_color,
-        home_players: m.home_players,
-        away_players: m.away_players,
-        stats: m.stats,
-        goals: m.goals,
-        videos: m.videos,
-        // Bump updated_at so this game is always "the latest" loaded on next visit.
-        // (There is no DB trigger to do this automatically.)
-        updated_at: new Date().toISOString(),
-      };
+  const save = useCallback(
+    async (opts?: { quiet?: boolean; state?: MatchState }): Promise<string | null> => {
+      const m = opts?.state ?? match;
+      setSaving(true);
+      try {
+        const payload = {
+          name: m.name,
+          opponent: m.opponent,
+          match_date: m.match_date || null,
+          kickoff: m.kickoff || null,
+          duration: m.duration || null,
+          location: m.location || null,
+          format: m.format,
+          home_color: m.home_color,
+          away_color: m.away_color,
+          home_players: m.home_players,
+          away_players: m.away_players,
+          stats: m.stats,
+          goals: m.goals,
+          videos: m.videos,
+          // Bump updated_at so this game is always "the latest" loaded on next visit.
+          // (There is no DB trigger to do this automatically.)
+          updated_at: new Date().toISOString(),
+        };
 
-      if (m.id) {
-        const { error } = await supabase.from("matches").update(payload).eq("id", m.id);
-        if (error) throw error;
-        if (!opts?.quiet) toast.success("Match updated");
-        return m.id;
-      } else {
-        const { data, error } = await supabase.from("matches").insert(payload).select().single();
-        if (error) throw error;
-        setMatch((prev) => ({ ...prev, id: data.id }));
-        if (!opts?.quiet) toast.success("Match saved");
-        return data.id as string;
+        if (m.id) {
+          const { error } = await supabase.from("matches").update(payload).eq("id", m.id);
+          if (error) throw error;
+          if (!opts?.quiet) toast.success("Match updated");
+          return m.id;
+        } else {
+          const { data, error } = await supabase.from("matches").insert(payload).select().single();
+          if (error) throw error;
+          setMatch((prev) => ({ ...prev, id: data.id }));
+          if (!opts?.quiet) toast.success("Match saved");
+          return data.id as string;
+        }
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "Save failed");
+        return null;
+      } finally {
+        setSaving(false);
       }
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
-      return null;
-    } finally {
-      setSaving(false);
-    }
-  }, [match]);
+    },
+    [match],
+  );
 
   const matchRef = useRef(match);
   const saveRef = useRef(save);
@@ -172,19 +190,22 @@ export function MatchProvider({ children }: { children: ReactNode }) {
   matchRef.current = match;
   saveRef.current = save;
 
-  const update = useCallback(<K extends keyof MatchState>(key: K, value: MatchState[K]) => {
-    if (!user) {
-      toast.error("Sign in to edit");
-      return;
-    }
-    if (!isApproved) {
-      toast.error("Your account isn't approved to edit yet. Ask an admin for editor access.");
-      return;
-    }
-    setMatch((m) => ({ ...m, [key]: value }));
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => saveRef.current({ quiet: true }), 2000);
-  }, [user, isApproved]);
+  const update = useCallback(
+    <K extends keyof MatchState>(key: K, value: MatchState[K]) => {
+      if (!user) {
+        toast.error("Sign in to edit");
+        return;
+      }
+      if (!isApproved) {
+        toast.error("Your account isn't approved to edit yet. Ask an admin for editor access.");
+        return;
+      }
+      setMatch((m) => ({ ...m, [key]: value }));
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+      autoSaveTimer.current = setTimeout(() => saveRef.current({ quiet: true }), 2000);
+    },
+    [user, isApproved],
+  );
 
   const reset = useCallback(() => setMatch(defaultMatch()), []);
   const load = useCallback((m: MatchState) => setMatch(m), []);
@@ -201,7 +222,9 @@ export function MatchProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <MatchCtx.Provider value={{ match, update, reset, load, save, saving, canEdit, createNewMatch }}>
+    <MatchCtx.Provider
+      value={{ match, update, reset, load, save, saving, canEdit, createNewMatch }}
+    >
       {children}
     </MatchCtx.Provider>
   );

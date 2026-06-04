@@ -3,6 +3,7 @@ import { useMatch } from "@/lib/match-store";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import venue from "@/assets/match-venue.jpg";
 import type { Format } from "@/lib/match-store";
+import { MATCH_FORMATS } from "@/lib/match-formats";
 
 export function MatchHero() {
   const { match, update, canEdit } = useMatch();
@@ -69,15 +70,18 @@ export function MatchHero() {
                       onChange={(e) => update("format", e.target.value as Format)}
                       className="h-7 px-1 w-full bg-background border border-border rounded text-xs font-display cursor-help"
                     >
-                      <option value="5v5">5 v 5</option>
-                      <option value="7v7">7 v 7</option>
-                      <option value="8v8">8 v 8</option>
-                      <option value="11v11">11 v 11</option>
+                      {MATCH_FORMATS.map((format) => (
+                        <option key={format.value} value={format.value}>
+                          {format.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-[200px] text-center">
-                  <p>Select the match format. This controls how many positions appear on the pitch.</p>
+                  <p>
+                    Select the match format. 5x5x5 opens the three-team player pool and generator.
+                  </p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

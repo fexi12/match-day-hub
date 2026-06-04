@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMatch, normalizePlayers, type Format, type Player } from "@/lib/match-store";
+import { isFiveModeFormat, lineupSizeForFormat } from "@/lib/match-formats";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { usePlayerAvatars, initialsOf, hueOf } from "@/lib/use-player-avatars";
@@ -9,20 +11,110 @@ import { toast } from "sonner";
 
 const FORMATIONS: Record<Format, { home: [number, number][]; away: [number, number][] }> = {
   "5v5": {
-    home: [[50, 96], [22, 82], [78, 82], [50, 70], [50, 58]],
-    away: [[50, 4], [22, 18], [78, 18], [50, 30], [50, 42]],
+    home: [
+      [50, 96],
+      [22, 82],
+      [78, 82],
+      [50, 70],
+      [50, 58],
+    ],
+    away: [
+      [50, 4],
+      [22, 18],
+      [78, 18],
+      [50, 30],
+      [50, 42],
+    ],
+  },
+  "5x5x5": {
+    home: [
+      [18, 24],
+      [18, 36],
+      [18, 48],
+      [18, 60],
+      [18, 72],
+      [50, 24],
+      [50, 36],
+      [50, 48],
+      [50, 60],
+      [50, 72],
+      [82, 24],
+      [82, 36],
+      [82, 48],
+      [82, 60],
+      [82, 72],
+    ],
+    away: [],
   },
   "7v7": {
-    home: [[50, 96], [25, 84], [75, 84], [18, 72], [50, 72], [82, 72], [50, 58]],
-    away: [[50, 4], [25, 16], [75, 16], [18, 28], [50, 28], [82, 28], [50, 42]],
+    home: [
+      [50, 96],
+      [25, 84],
+      [75, 84],
+      [18, 72],
+      [50, 72],
+      [82, 72],
+      [50, 58],
+    ],
+    away: [
+      [50, 4],
+      [25, 16],
+      [75, 16],
+      [18, 28],
+      [50, 28],
+      [82, 28],
+      [50, 42],
+    ],
   },
   "8v8": {
-    home: [[50, 96], [20, 84], [50, 84], [80, 84], [20, 72], [50, 72], [80, 72], [50, 58]],
-    away: [[50, 4], [20, 16], [50, 16], [80, 16], [20, 28], [50, 28], [80, 28], [50, 42]],
+    home: [
+      [50, 96],
+      [20, 84],
+      [50, 84],
+      [80, 84],
+      [20, 72],
+      [50, 72],
+      [80, 72],
+      [50, 58],
+    ],
+    away: [
+      [50, 4],
+      [20, 16],
+      [50, 16],
+      [80, 16],
+      [20, 28],
+      [50, 28],
+      [80, 28],
+      [50, 42],
+    ],
   },
   "11v11": {
-    home: [[50, 96], [12, 84], [37, 84], [63, 84], [88, 84], [12, 70], [37, 70], [63, 70], [88, 70], [35, 56], [65, 56]],
-    away: [[50, 4], [12, 16], [37, 16], [63, 16], [88, 16], [12, 30], [37, 30], [63, 30], [88, 30], [35, 44], [65, 44]],
+    home: [
+      [50, 96],
+      [12, 84],
+      [37, 84],
+      [63, 84],
+      [88, 84],
+      [12, 70],
+      [37, 70],
+      [63, 70],
+      [88, 70],
+      [35, 56],
+      [65, 56],
+    ],
+    away: [
+      [50, 4],
+      [12, 16],
+      [37, 16],
+      [63, 16],
+      [88, 16],
+      [12, 30],
+      [37, 30],
+      [63, 30],
+      [88, 30],
+      [35, 44],
+      [65, 44],
+    ],
   },
 };
 
@@ -46,7 +138,8 @@ const ensureSize = (arr: Player[], n: number): Player[] => {
 export function Lineup() {
   const { match, update, load, save, canEdit } = useMatch();
   const { user, signInWithGoogle } = useAuth();
-  const size = useMemo(() => parseInt(match.format), [match.format]);
+  const isFiveMode = isFiveModeFormat(match.format);
+  const size = useMemo(() => lineupSizeForFormat(match.format), [match.format]);
   const positions = FORMATIONS[match.format];
 
   const homePlayers = ensureSize(match.home_players, size);
@@ -79,10 +172,14 @@ export function Lineup() {
     update(key, arr);
     // Persist to DB
     if (match.id) {
-      supabase.from("matches").update({ [key]: arr }).eq("id", match.id).then(({ error }) => {
-        if (error) toast.error("Failed to remove");
-        else toast.success("Removed from squad");
-      });
+      supabase
+        .from("matches")
+        .update({ [key]: arr })
+        .eq("id", match.id)
+        .then(({ error }) => {
+          if (error) toast.error("Failed to remove");
+          else toast.success("Removed from squad");
+        });
     } else {
       toast.success("Removed from squad");
     }
@@ -130,47 +227,80 @@ export function Lineup() {
     toast.success("You're on the pitch!");
   };
 
-
   return (
     <section id="lineup" className="bg-background border-b border-border">
       <div className="mx-auto max-w-7xl px-6 py-20">
         <p className="text-sm tracking-[0.3em]" style={{ color: "var(--color-ember)" }}>
           Tactics Board
         </p>
-        <h2 className="mt-2 text-5xl md:text-6xl">The Squad</h2>
+        <h2 className="mt-2 text-5xl md:text-6xl">
+          {isFiveMode ? "5x5x5 Player Pool" : "The Squad"}
+        </h2>
+
+        {isFiveMode && (
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border-2 border-accent/40 bg-accent/10 p-4">
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-lg">Three teams · five players each</p>
+              <p className="text-sm text-muted-foreground">
+                Add the player names on this field, then generate the mini-matches below.
+              </p>
+            </div>
+            <Button asChild className="font-display tracking-wider">
+              <a href="#five-mode">Generate 5x5x5</a>
+            </Button>
+          </div>
+        )}
 
         {user && (
-          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm" style={{ backgroundColor: "oklch(0.65 0.22 35 / 0.08)", borderColor: "oklch(0.65 0.22 35 / 0.25)", color: "oklch(0.65 0.22 35)" }}>
+          <div
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm"
+            style={{
+              backgroundColor: "oklch(0.65 0.22 35 / 0.08)",
+              borderColor: "oklch(0.65 0.22 35 / 0.25)",
+              color: "oklch(0.65 0.22 35)",
+            }}
+          >
             <span>💡</span>
             <span>
-              <strong>Tip:</strong> Click any empty position on the pitch to take that spot — your name and Google photo appear there instantly.
+              <strong>Tip:</strong> Click any empty position on the pitch to take that spot — your
+              name and Google photo appear there instantly.
             </span>
           </div>
         )}
 
-<div className="mt-6 flex items-center gap-8">
-          <ColorPicker label="HOME KIT" value={match.home_color} onChange={(v) => update("home_color", v)} />
-          <ColorPicker label="AWAY KIT" value={match.away_color} onChange={(v) => update("away_color", v)} />
+        <div className="mt-6 flex items-center gap-8">
+          <ColorPicker
+            label="HOME KIT"
+            value={match.home_color}
+            onChange={(v) => update("home_color", v)}
+          />
+          <ColorPicker
+            label="AWAY KIT"
+            value={match.away_color}
+            onChange={(v) => update("away_color", v)}
+          />
         </div>
 
         <div className="mt-10 grid grid-cols-1 lg:grid-cols-[2.2fr_1fr] gap-8">
           <div className="relative aspect-[2/3] sm:aspect-[3/5] md:aspect-[2/3] rounded-xl overflow-hidden shadow-2xl border-2 border-primary">
             <Pitch />
-            {positions.away.map(([x, y], i) => (
-              <PlayerMarker
-                key={`a${i}`}
-                x={x}
-                y={y}
-                color={match.away_color}
-                number={i + 1}
-                player={awayPlayers[i]}
-                photo={resolvePhoto(awayPlayers[i])}
-                onClaim={() => claimSlot("away", i)}
-                onRemoveSelf={() => removeSelf("away", i)}
-                userEmail={user?.email ?? null}
-                isSignedIn={!!user}
-              />
-            ))}
+            {isFiveMode && <FiveModePitchLabels />}
+            {!isFiveMode &&
+              positions.away.map(([x, y], i) => (
+                <PlayerMarker
+                  key={`a${i}`}
+                  x={x}
+                  y={y}
+                  color={match.away_color}
+                  number={i + 1}
+                  player={awayPlayers[i]}
+                  photo={resolvePhoto(awayPlayers[i])}
+                  onClaim={() => claimSlot("away", i)}
+                  onRemoveSelf={() => removeSelf("away", i)}
+                  userEmail={user?.email ?? null}
+                  isSignedIn={!!user}
+                />
+              ))}
             {positions.home.map(([x, y], i) => (
               <PlayerMarker
                 key={`h${i}`}
@@ -186,30 +316,32 @@ export function Lineup() {
                 isSignedIn={!!user}
               />
             ))}
-
           </div>
 
           <div className="flex flex-col gap-6">
             <Roster
-              title="Home Team"
+              title={isFiveMode ? "5x5x5 Players" : "Home Team"}
               color={match.home_color}
               size={size}
               players={homePlayers}
               canEdit={canEdit}
               onChange={(i, patch) => setPlayer("home", i, patch)}
             />
-            <Roster
-              title={match.opponent || "Away Team"}
-              color={match.away_color}
-              size={size}
-              players={awayPlayers}
-              canEdit={canEdit}
-              onChange={(i, patch) => setPlayer("away", i, patch)}
-            />
+            {!isFiveMode && (
+              <Roster
+                title={match.opponent || "Away Team"}
+                color={match.away_color}
+                size={size}
+                players={awayPlayers}
+                canEdit={canEdit}
+                onChange={(i, patch) => setPlayer("away", i, patch)}
+              />
+            )}
 
             {!user && (
               <p className="text-xs text-muted-foreground italic">
-                Sign in to add players. Each player's Google photo appears once they sign in with the email you set.
+                Sign in to add players. Each player's Google photo appears once they sign in with
+                the email you set.
               </p>
             )}
           </div>
@@ -219,7 +351,15 @@ export function Lineup() {
   );
 }
 
-function ColorPicker({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function ColorPicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <div>
       <p className="mb-3 text-xs tracking-[0.25em] text-muted-foreground">{label}</p>
@@ -258,7 +398,10 @@ function Roster({
   return (
     <div className="border-2 border-primary rounded-xl p-5 bg-card">
       <div className="flex items-center gap-3 mb-4">
-        <div className="h-5 w-5 rounded-full border-2 border-primary" style={{ backgroundColor: color }} />
+        <div
+          className="h-5 w-5 rounded-full border-2 border-primary"
+          style={{ backgroundColor: color }}
+        />
         <h3 className="text-xl">{title}</h3>
       </div>
       <div className="flex flex-col gap-2">
@@ -287,7 +430,9 @@ function InitialsAvatar({ name, size = "md" }: { name: string; size?: "sm" | "md
   return (
     <div
       className={`${sizes[size]} flex items-center justify-center font-display font-bold text-white`}
-      style={{ background: `linear-gradient(135deg, hsl(${hue} 65% 45%), hsl(${(hue + 40) % 360} 65% 35%))` }}
+      style={{
+        background: `linear-gradient(135deg, hsl(${hue} 65% 45%), hsl(${(hue + 40) % 360} 65% 35%))`,
+      }}
     >
       {initials}
     </div>
@@ -320,10 +465,13 @@ function PlayerRow({
   );
 }
 
-
 function Pitch() {
   return (
-    <svg viewBox="0 0 100 140" className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
+    <svg
+      viewBox="0 0 100 140"
+      className="absolute inset-0 h-full w-full"
+      preserveAspectRatio="none"
+    >
       <defs>
         <pattern id="stripes" width="100" height="14" patternUnits="userSpaceOnUse">
           <rect width="100" height="14" fill="#2d5a3d" />
@@ -342,6 +490,26 @@ function Pitch() {
         <rect x="37" y="130" width="26" height="7" />
       </g>
     </svg>
+  );
+}
+
+function FiveModePitchLabels() {
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      {[
+        { label: "TEAM 1", left: "18%" },
+        { label: "TEAM 2", left: "50%" },
+        { label: "TEAM 3", left: "82%" },
+      ].map((team) => (
+        <div
+          key={team.label}
+          className="absolute -translate-x-1/2 rounded-full border border-white/70 bg-primary/80 px-3 py-1 font-display text-xs tracking-wider text-primary-foreground shadow-lg"
+          style={{ left: team.left, top: "10%" }}
+        >
+          {team.label}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -371,7 +539,8 @@ function PlayerMarker({
   const isLight = ["#f0e8d6", "#ffffff", "#e0b441", "#5cbdb9"].includes(color);
   const name = player?.name;
   const isEmpty = !name && !player?.email;
-  const isMine = !!userEmail && !!player?.email && player.email.toLowerCase() === userEmail.toLowerCase();
+  const isMine =
+    !!userEmail && !!player?.email && player.email.toLowerCase() === userEmail.toLowerCase();
   const [open, setOpen] = useState(false);
 
   return (
@@ -385,7 +554,9 @@ function PlayerMarker({
             type="button"
             onClick={() => setOpen(true)}
             className={`relative h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full border-2 shadow-lg overflow-hidden flex items-center justify-center font-display transition ${
-              isMine || isEmpty ? "cursor-pointer hover:scale-110 hover:ring-2 hover:ring-primary/60" : "cursor-default"
+              isMine || isEmpty
+                ? "cursor-pointer hover:scale-110 hover:ring-2 hover:ring-primary/60"
+                : "cursor-default"
             } ${isMine ? "ring-2 ring-primary" : ""}`}
             style={{
               backgroundColor: color,
@@ -394,7 +565,11 @@ function PlayerMarker({
             }}
           >
             {photo ? (
-              <img src={photo} alt={name ?? `Player ${number}`} className="absolute inset-0 h-full w-full object-cover" />
+              <img
+                src={photo}
+                alt={name ?? `Player ${number}`}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
             ) : name ? (
               <InitialsAvatar name={name} size="lg" />
             ) : (
@@ -404,7 +579,9 @@ function PlayerMarker({
               <div
                 className="absolute top-0 right-0 h-4 w-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold opacity-0 group-hover:opacity-100 transition-opacity"
                 style={{ backgroundColor: "oklch(0.65 0.22 35)" }}
-              >×</div>
+              >
+                ×
+              </div>
             )}
           </button>
           {name && !isMine && (
@@ -447,7 +624,9 @@ function PlayerMarker({
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            <p className="text-xs text-muted-foreground">Sign in to claim this spot with your Google photo.</p>
+            <p className="text-xs text-muted-foreground">
+              Sign in to claim this spot with your Google photo.
+            </p>
             <button
               type="button"
               onClick={async () => {

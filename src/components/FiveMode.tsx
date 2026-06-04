@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useMatch, type Player, type Stat } from "@/lib/match-store";
+import { isFiveModeFormat } from "@/lib/match-formats";
 import { BarChart3, Goal, Plus, Shuffle, Target, Trophy, Users } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -51,6 +52,7 @@ const assistValue = (side: FiveSide, player: Player) =>
 
 export function FiveMode() {
   const { match, update, canEdit } = useMatch();
+  const isSelected = isFiveModeFormat(match.format);
   const current = getFiveMode(match.stats);
   const [targetMatches, setTargetMatches] = useState(current.targetMatches || DEFAULT_MATCH_COUNT);
   const [teamCount, setTeamCount] = useState(current.teamCount || DEFAULT_TEAM_COUNT);
@@ -71,6 +73,8 @@ export function FiveMode() {
   );
   const totalAssists = standings.reduce((sum, row) => sum + row.assists, 0);
   const maxPlayerGoals = Math.max(1, ...standings.map((row) => row.goals));
+
+  if (!isSelected) return null;
 
   const saveFiveMode = (next: FiveModeState) => {
     const cleaned = visibleStats(match.stats);
@@ -154,9 +158,9 @@ export function FiveMode() {
             </p>
             <h2 className="mt-2 text-5xl md:text-6xl">5x5x5 Mode</h2>
             <p className="mt-4 max-w-2xl text-muted-foreground">
-              Choose how many teams you want, generate the local mini-matches, and record goals +
-              assists for each individual player. The match score updates from player goals; assists
-              feed the leaderboard.
+              Add the players on the pitch above, choose how many teams you want, generate the local
+              mini-matches, and record goals + assists for each individual player. The match score
+              updates from player goals; assists feed the leaderboard.
             </p>
           </div>
 
@@ -203,8 +207,8 @@ export function FiveMode() {
               />
               <p className="mt-1 text-[10px] text-muted-foreground">
                 {usingManualPlayers
-                  ? `${players.length} manual names loaded. These names override the squad for 5x5.`
-                  : `Using ${squadPlayers.length} names from the squad. Add names above to override.`}
+                  ? `${players.length} pasted names loaded. These names override the pitch player pool for 5x5.`
+                  : `Using ${squadPlayers.length} names from the pitch player pool. Paste names above only if you want to override.`}
               </p>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
