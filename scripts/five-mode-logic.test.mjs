@@ -78,12 +78,28 @@ assert.equal(first.home.assists[0].playerName, "Player 2", "assist belongs to a 
 assert.equal(first.away.assists[0].assists, 2, "assists can be recorded per player");
 assert.equal(first.home.score, 2, "assists do not change the match score");
 
-const standings = mod.standingsFor(updated);
-const p11 = standings.find((row) => row.name === "Player 11");
-const p1 = standings.find((row) => row.name === "Player 1");
-const p2 = standings.find((row) => row.name === "Player 2");
-assert.equal(p11?.goals, 3, "leaderboard tracks goals by player");
+const playerStandings = mod.standingsFor(updated);
+const p11 = playerStandings.find((row) => row.name === "Player 11");
+const p1 = playerStandings.find((row) => row.name === "Player 1");
+const p2 = playerStandings.find((row) => row.name === "Player 2");
+assert.equal(p11?.goals, 3, "player table tracks goals by player");
 assert.equal(p1?.goals, 2, "player goals are not copied to every team mate");
-assert.equal(p2?.assists, 1, "leaderboard tracks assists by player");
+assert.equal(p2?.assists, 1, "player table tracks assists by player");
+
+const teamStandings = mod.teamStandingsFor(updated);
+assert.deepEqual(
+  teamStandings.map((row) => row.name),
+  ["Team 3", "Team 1", "Team 2"],
+  "team leaderboard is ranked by wins, then goals scored, then goal difference",
+);
+assert.deepEqual(
+  teamStandings.map((row) => [row.wins, row.goalsFor, row.goalsAgainst, row.points]),
+  [
+    [1, 3, 0, 4],
+    [1, 2, 4, 3],
+    [0, 1, 2, 1],
+  ],
+  "team leaderboard aggregates match results once per team, not once per player",
+);
 
 console.log("five-mode logic ok");

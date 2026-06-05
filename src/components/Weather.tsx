@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { CloudSun, Cloud, CloudRain, CloudSnow, Wind, Droplets, Thermometer } from "lucide-react";
 import { useMatch } from "@/lib/match-store";
-
-export type WeatherData = {
-  tempMax: number;
-  tempMin: number;
-  weatherCode: number;
-  precipitation: number;
-};
+import {
+  buildWeatherRequest,
+  pickKickoffWeather,
+  type OpenMeteoHourlyResponse,
+  type WeatherData,
+} from "@/lib/weather";
 
 // WMO weather code → label + icon
 const WMO_CODES: Record<number, { label: string; Icon: typeof CloudSun }> = {
@@ -41,32 +40,13 @@ function getWeatherInfo(code: number) {
   return WMO_CODES[base] ?? { label: "Unknown", Icon: Cloud };
 }
 
-async function fetchWeather(date: string): Promise<WeatherData | null> {
-  // Porto: R. de Alves Redol 292, 4050-042 Porto
-  const lat = 41.1579;
-  const lon = -8.6291;
-
-  const today = new Date().toISOString().split("T")[0];
-  const isPast = date < today;
-  const base = isPast
-    ? "https://archive-api.open-meteo.com/v1/archive"
-    : "https://api.open-meteo.com/v1/forecast";
-
+async function fetchWeather(date: string, kickoff: string): Promise<WeatherData | null> {
   try {
-    const url = `${base}?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum&timezone=auto&start_date=${date}&end_date=${date}`;
-    const res = await fetch(url, { next: { revalidate: 3600 } });
+    const request = buildWeatherRequest(date, kickoff);
+    const res = await fetch(request.url);
     if (!res.ok) return null;
-    const data = await res.json();
-    if (!data?.daily) return null;
-
-    const { daily } = data;
-    const i = 0; // first (and only) day
-    return {
-      tempMax: Math.round(daily.temperature_2m_max[i]),
-      tempMin: Math.round(daily.temperature_2m_min[i]),
-      weatherCode: daily.weathercode[i],
-      precipitation: daily.precipitation_sum[i],
-    };
+    const data = (await res.json()) as OpenMeteoHourlyResponse;
+    return pickKickoffWeather(data, date, request.kickoff);
   } catch {
     return null;
   }
@@ -81,11 +61,11 @@ export function Weather() {
     if (!match.match_date) return;
     setLoading(true);
     setWeather(null);
-    fetchWeather(match.match_date).then((w) => {
+    fetchWeather(match.match_date, match.kickoff).then((w) => {
       setWeather(w);
       setLoading(false);
     });
-  }, [match.match_date]);
+  }, [match.match_date, match.kickoff]);
 
   if (!match.match_date) return null;
 
@@ -96,7 +76,12 @@ export function Weather() {
       <div className="mx-auto max-w-6xl px-6 py-12">
         <div className="flex items-center gap-3 mb-8">
           <CloudSun className="h-6 w-6 text-accent" strokeWidth={1.5} />
-          <h3 className="text-xl font-display tracking-wider">Matchday Weather</h3>
+          <div>
+            <h3 className="text-xl font-display tracking-wider">Matchday Weather</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Forecast for {match.match_date} at {match.kickoff || "12:00"} in Porto.
+            </p>
+          </div>
         </div>
 
         {loading ? (
@@ -105,28 +90,20 @@ export function Weather() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border rounded-xl overflow-hidden border border-border">
             <WeatherCard
               icon={Thermometer}
-              label="High"
-              value={`${weather.tempMax}°C`}
+              label={`Temp ${weather.time}`}
+              value={`${weather.temperature}°C`}
             />
-            <WeatherCard
-              icon={Thermometer}
-              label="Low"
-              value={`${weather.tempMin}°C`}
-            />
-            <WeatherCard
-              icon={Icon}
-              label="Condition"
-              value={label}
-            />
+            <WeatherCard icon={Icon} label="Condition" value={label} />
             <WeatherCard
               icon={Droplets}
-              label="Precipitation"
+              label="Rain"
               value={`${weather.precipitation.toFixed(1)} mm`}
             />
+            <WeatherCard icon={Wind} label="Source" value="Kickoff hour" />
           </div>
         ) : (
           <p className="text-muted-foreground text-sm">
-            Weather data unavailable for {match.match_date}.
+            Weather data unavailable for {match.match_date} at {match.kickoff || "12:00"}.
           </p>
         )}
       </div>

@@ -57,6 +57,17 @@ export type PlayerStanding = {
   points: number;
 };
 
+export type TeamStanding = {
+  name: string;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  points: number;
+};
+
 export const emptyFiveModeState = (): FiveModeState => ({
   enabled: false,
   targetMatches: DEFAULT_MATCH_COUNT,
@@ -239,6 +250,59 @@ const goalsForPlayer = (side: FiveSide, player: FivePlayer) =>
 
 const assistsForPlayer = (side: FiveSide, player: FivePlayer) =>
   (side.assists ?? []).find((row) => row.playerName === player.name)?.assists ?? 0;
+
+export const teamStandingsFor = (matches: FiveMiniMatch[]): TeamStanding[] => {
+  const table = new Map<string, TeamStanding>();
+
+  const ensure = (team: FiveSide) => {
+    const key = team.name.trim().toLowerCase();
+    if (!table.has(key)) {
+      table.set(key, {
+        name: team.name,
+        played: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        points: 0,
+      });
+    }
+    return table.get(key)!;
+  };
+
+  const applyResult = (team: FiveSide, goalsFor: number, goalsAgainst: number) => {
+    const row = ensure(team);
+    row.played += 1;
+    row.goalsFor += goalsFor;
+    row.goalsAgainst += goalsAgainst;
+    if (goalsFor > goalsAgainst) {
+      row.wins += 1;
+      row.points += 3;
+    } else if (goalsFor < goalsAgainst) {
+      row.losses += 1;
+    } else {
+      row.draws += 1;
+      row.points += 1;
+    }
+  };
+
+  matches.forEach((match) => {
+    const homeScore = sideScore(match.home);
+    const awayScore = sideScore(match.away);
+    applyResult(match.home, homeScore, awayScore);
+    applyResult(match.away, awayScore, homeScore);
+  });
+
+  return [...table.values()].sort(
+    (a, b) =>
+      b.wins - a.wins ||
+      b.goalsFor - a.goalsFor ||
+      b.points - a.points ||
+      b.goalsFor - b.goalsAgainst - (a.goalsFor - a.goalsAgainst) ||
+      a.name.localeCompare(b.name),
+  );
+};
 
 export const standingsFor = (matches: FiveMiniMatch[]): PlayerStanding[] => {
   const table = new Map<string, PlayerStanding>();

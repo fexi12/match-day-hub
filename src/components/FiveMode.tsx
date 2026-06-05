@@ -17,6 +17,7 @@ import {
   playerKey,
   sideScore,
   standingsFor,
+  teamStandingsFor,
   updatePlayerAssist,
   updatePlayerGoal,
   type FiveMiniMatch,
@@ -60,13 +61,14 @@ export function FiveMode() {
   );
   const players = useMemo(() => lineupTeams.flatMap((team) => team.players), [lineupTeams]);
   const maxTeams = players.length >= TEAM_SIZE * 2 ? lineupTeams.length : 0;
-  const standings = useMemo(() => standingsFor(current.matches), [current.matches]);
+  const playerStandings = useMemo(() => standingsFor(current.matches), [current.matches]);
+  const teamStandings = useMemo(() => teamStandingsFor(current.matches), [current.matches]);
   const totalGoals = current.matches.reduce(
     (sum, item) => sum + sideScore(item.home) + sideScore(item.away),
     0,
   );
-  const totalAssists = standings.reduce((sum, row) => sum + row.assists, 0);
-  const maxPlayerGoals = Math.max(1, ...standings.map((row) => row.goals));
+  const totalAssists = playerStandings.reduce((sum, row) => sum + row.assists, 0);
+  const maxTeamGoals = Math.max(1, ...teamStandings.map((row) => row.goalsFor));
 
   if (!isSelected) return null;
 
@@ -266,15 +268,15 @@ export function FiveMode() {
             <div className="border-2 border-primary rounded-xl bg-card p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Trophy className="h-5 w-5 text-accent" />
-                <h3 className="text-2xl">Leaderboard</h3>
+                <h3 className="text-2xl">Team Leaderboard</h3>
               </div>
-              {standings.length === 0 ? (
+              {teamStandings.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic">
-                  Player goal + assist inputs will create the table automatically.
+                  Team results will create the table automatically after you generate mini-matches.
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {standings.slice(0, 10).map((row, index) => (
+                  {teamStandings.map((row, index) => (
                     <div
                       key={row.name}
                       className="grid grid-cols-[32px_1fr_auto] items-center gap-3 rounded-lg border border-border p-2"
@@ -285,11 +287,11 @@ export function FiveMode() {
                       <div className="min-w-0">
                         <p className="font-semibold truncate">{row.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {row.goals}G · {row.assists}A · {row.wins}W {row.draws}D {row.losses}L ·
-                          GD {row.goalsFor - row.goalsAgainst}
+                          {row.wins}W {row.draws}D {row.losses}L · {row.goalsFor} GF · GD{" "}
+                          {row.goalsFor - row.goalsAgainst}
                         </p>
                       </div>
-                      <span className="font-display text-2xl text-accent">{row.points}</span>
+                      <span className="font-display text-2xl text-accent">{row.wins}W</span>
                     </div>
                   ))}
                 </div>
@@ -307,18 +309,18 @@ export function FiveMode() {
                 <Metric label="Assists" value={totalAssists} />
               </div>
               <div className="space-y-3">
-                {standings.slice(0, 8).map((row) => (
+                {teamStandings.map((row) => (
                   <div key={row.name}>
                     <div className="mb-1 flex justify-between gap-3 text-xs">
                       <span className="truncate">{row.name}</span>
                       <span>
-                        {row.goals}G / {row.assists}A
+                        {row.goalsFor} GF / {row.wins}W
                       </span>
                     </div>
                     <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
                       <div
                         className="h-full bg-accent transition-all"
-                        style={{ width: `${Math.max(6, (row.goals / maxPlayerGoals) * 100)}%` }}
+                        style={{ width: `${Math.max(6, (row.goalsFor / maxTeamGoals) * 100)}%` }}
                       />
                     </div>
                   </div>
