@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMatch, type Player, type Stat } from "@/lib/match-store";
 import { isFiveModeFormat } from "@/lib/match-formats";
-import { BarChart3, Goal, Plus, Shuffle, Target, Trophy, Users } from "lucide-react";
+import { Goal, Plus, Shuffle, Target, Users } from "lucide-react";
 import { toast } from "sonner";
 import {
   DEFAULT_MATCH_COUNT,
@@ -16,8 +16,6 @@ import {
   normalizeScore,
   playerKey,
   sideScore,
-  standingsFor,
-  teamStandingsFor,
   updatePlayerAssist,
   updatePlayerGoal,
   type FiveMiniMatch,
@@ -61,15 +59,6 @@ export function FiveMode() {
   );
   const players = useMemo(() => lineupTeams.flatMap((team) => team.players), [lineupTeams]);
   const maxTeams = players.length >= TEAM_SIZE * 2 ? lineupTeams.length : 0;
-  const playerStandings = useMemo(() => standingsFor(current.matches), [current.matches]);
-  const teamStandings = useMemo(() => teamStandingsFor(current.matches), [current.matches]);
-  const totalGoals = current.matches.reduce(
-    (sum, item) => sum + sideScore(item.home) + sideScore(item.away),
-    0,
-  );
-  const totalAssists = playerStandings.reduce((sum, row) => sum + row.assists, 0);
-  const maxTeamGoals = Math.max(1, ...teamStandings.map((row) => row.goalsFor));
-
   if (!isSelected) return null;
 
   const saveFiveMode = (next: FiveModeState) => {
@@ -238,7 +227,7 @@ export function FiveMode() {
           </div>
         </div>
 
-        <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-8">
+        <div className="mt-10">
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Goal className="h-5 w-5 text-accent" />
@@ -262,71 +251,6 @@ export function FiveMode() {
                 ))}
               </div>
             )}
-          </div>
-
-          <div className="space-y-6">
-            <div className="border-2 border-primary rounded-xl bg-card p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Trophy className="h-5 w-5 text-accent" />
-                <h3 className="text-2xl">Team Leaderboard</h3>
-              </div>
-              {teamStandings.length === 0 ? (
-                <p className="text-sm text-muted-foreground italic">
-                  Team results will create the table automatically after you generate mini-matches.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {teamStandings.map((row, index) => (
-                    <div
-                      key={row.name}
-                      className="grid grid-cols-[32px_1fr_auto] items-center gap-3 rounded-lg border border-border p-2"
-                    >
-                      <span className="font-display text-lg text-muted-foreground">
-                        {index + 1}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="font-semibold truncate">{row.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {row.wins}W {row.draws}D {row.losses}L · {row.goalsFor} GF · GD{" "}
-                          {row.goalsFor - row.goalsAgainst}
-                        </p>
-                      </div>
-                      <span className="font-display text-2xl text-accent">{row.wins}W</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="border-2 border-primary rounded-xl bg-primary text-primary-foreground p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <BarChart3 className="h-5 w-5 text-accent" />
-                <h3 className="text-2xl text-primary-foreground">Goals Graph</h3>
-              </div>
-              <div className="grid grid-cols-3 gap-3 text-center mb-5">
-                <Metric label="Teams" value={current.teamCount || teamCount} />
-                <Metric label="Goals" value={totalGoals} />
-                <Metric label="Assists" value={totalAssists} />
-              </div>
-              <div className="space-y-3">
-                {teamStandings.map((row) => (
-                  <div key={row.name}>
-                    <div className="mb-1 flex justify-between gap-3 text-xs">
-                      <span className="truncate">{row.name}</span>
-                      <span>
-                        {row.goalsFor} GF / {row.wins}W
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
-                      <div
-                        className="h-full bg-accent transition-all"
-                        style={{ width: `${Math.max(6, (row.goalsFor / maxTeamGoals) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -448,15 +372,6 @@ function TeamGoalBlock({
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-lg border border-accent/30 p-3">
-      <p className="text-[10px] tracking-[0.25em] text-accent/80">{label.toUpperCase()}</p>
-      <p className="mt-1 font-display text-3xl">{value}</p>
     </div>
   );
 }

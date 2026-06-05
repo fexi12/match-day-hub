@@ -1,15 +1,29 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { BarChart3, Plus, Trash2, Trophy } from "lucide-react";
 import { useMatch, type Goal, type Stat } from "@/lib/match-store";
+import { reportModeForFormat } from "@/lib/match-report";
+import {
+  emptyFiveModeState,
+  sideScore,
+  teamStandingsFor,
+  standingsFor,
+  type FiveModeState,
+} from "@/lib/five-mode";
 
 const FIVE_MODE_LABEL = "__5X5X5_MODE__";
 const visibleStats = (stats: Stat[]): Stat[] => stats.filter((s) => s.label !== FIVE_MODE_LABEL);
+type FiveStat = Stat & { fiveMode?: FiveModeState };
+const getFiveMode = (stats: Stat[]): FiveModeState => {
+  const row = stats.find((s) => s.label === FIVE_MODE_LABEL) as FiveStat | undefined;
+  return { ...emptyFiveModeState(), ...row?.fiveMode };
+};
 
 export function Statistics() {
   const { match, update, canEdit } = useMatch();
   const ro = !canEdit;
   const stats = visibleStats(match.stats);
+  const reportMode = reportModeForFormat(match.format);
 
   const updateStat = (i: number, side: "home" | "away", v: number) => {
     const visibleIndex = stats[i];
@@ -22,6 +36,10 @@ export function Statistics() {
 
   const homeGoals = match.goals.filter((g) => g.team === "home").length;
   const awayGoals = match.goals.filter((g) => g.team === "away").length;
+
+  if (reportMode === "five-mode") {
+    return <FiveModeFullTimeReport />;
+  }
 
   const addGoal = (team: "home" | "away") =>
     update("goals", [...match.goals, { id: Date.now(), team, minute: "", scorer: "", assist: "" }]);
@@ -120,6 +138,112 @@ export function Statistics() {
         </div>
       </div>
     </section>
+  );
+}
+
+function FiveModeFullTimeReport() {
+  const { match } = useMatch();
+  const current = getFiveMode(match.stats);
+  const teamStandings = teamStandingsFor(current.matches);
+  const playerStandings = standingsFor(current.matches);
+  const totalGoals = current.matches.reduce(
+    (sum, item) => sum + sideScore(item.home) + sideScore(item.away),
+    0,
+  );
+  const totalAssists = playerStandings.reduce((sum, row) => sum + row.assists, 0);
+  const maxTeamGoals = Math.max(1, ...teamStandings.map((row) => row.goalsFor));
+
+  return (
+    <section id="stats" className="bg-primary text-primary-foreground">
+      <div className="mx-auto max-w-7xl px-6 py-20">
+        <p className="text-sm tracking-[0.3em] text-accent">Full Time Report</p>
+        <h2 className="mt-2 text-5xl md:text-6xl">5x5x5 Statistics</h2>
+        <p className="mt-4 max-w-2xl text-primary-foreground/70">
+          This format uses the team leaderboard and goals graph instead of the normal two-team match
+          report.
+        </p>
+
+        <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-8">
+          <div className="border-2 border-accent/40 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Trophy className="h-5 w-5 text-accent" />
+              <h3 className="text-2xl text-accent">Team Leaderboard</h3>
+            </div>
+            {teamStandings.length === 0 ? (
+              <p className="text-sm text-primary-foreground/60 italic">
+                Generate 5x5x5 mini-matches and add player goals to create the table.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {teamStandings.map((row, index) => (
+                  <div
+                    key={row.name}
+                    className="grid grid-cols-[32px_1fr_auto] items-center gap-3 rounded-lg border border-accent/30 p-2"
+                  >
+                    <span className="font-display text-lg text-primary-foreground/60">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-semibold truncate">{row.name}</p>
+                      <p className="text-xs text-primary-foreground/60">
+                        {row.wins}W {row.draws}D {row.losses}L · {row.goalsFor} GF · GD{" "}
+                        {row.goalsFor - row.goalsAgainst}
+                      </p>
+                    </div>
+                    <span className="font-display text-2xl text-accent">{row.wins}W</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="border-2 border-accent/40 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="h-5 w-5 text-accent" />
+              <h3 className="text-2xl text-accent">Goals Graph</h3>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-center mb-5">
+              <FiveMetric label="Teams" value={current.teamCount || teamStandings.length || 3} />
+              <FiveMetric label="Goals" value={totalGoals} />
+              <FiveMetric label="Assists" value={totalAssists} />
+            </div>
+            {teamStandings.length === 0 ? (
+              <p className="text-sm text-primary-foreground/60 italic">
+                Goals per team will appear here after scoring the mini-matches.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {teamStandings.map((row) => (
+                  <div key={row.name}>
+                    <div className="mb-1 flex justify-between gap-3 text-xs">
+                      <span className="truncate">{row.name}</span>
+                      <span>
+                        {row.goalsFor} GF / {row.wins}W
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-primary-foreground/20 overflow-hidden">
+                      <div
+                        className="h-full bg-accent transition-all"
+                        style={{ width: `${Math.max(6, (row.goalsFor / maxTeamGoals) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FiveMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg bg-primary-foreground/10 p-3">
+      <p className="text-[10px] tracking-[0.2em] text-accent">{label.toUpperCase()}</p>
+      <p className="font-display text-3xl">{value}</p>
+    </div>
   );
 }
 

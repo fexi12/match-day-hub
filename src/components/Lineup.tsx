@@ -5,7 +5,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useMatch, normalizePlayers, type Format, type Player } from "@/lib/match-store";
 import { isFiveModeFormat, lineupSizeForFormat } from "@/lib/match-formats";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
+import { canUserPlaceSelfInSlot, isClaimedByUser } from "@/lib/lineup-claim";
 import { usePlayerAvatars, initialsOf, hueOf } from "@/lib/use-player-avatars";
 import { toast } from "sonner";
 
@@ -174,7 +176,11 @@ export function Lineup() {
     if (match.id) {
       supabase
         .from("matches")
-        .update({ [key]: arr })
+        .update(
+          key === "home_players"
+            ? { home_players: arr as unknown as Json }
+            : { away_players: arr as unknown as Json },
+        )
         .eq("id", match.id)
         .then(({ error }) => {
           if (error) toast.error("Failed to remove");
@@ -539,8 +545,8 @@ function PlayerMarker({
   const isLight = ["#f0e8d6", "#ffffff", "#e0b441", "#5cbdb9"].includes(color);
   const name = player?.name;
   const isEmpty = !name && !player?.email;
-  const isMine =
-    !!userEmail && !!player?.email && player.email.toLowerCase() === userEmail.toLowerCase();
+  const isMine = isClaimedByUser(player ?? {}, userEmail);
+  const canPlaceSelf = canUserPlaceSelfInSlot(player ?? {}, userEmail);
   const [open, setOpen] = useState(false);
 
   return (
@@ -554,7 +560,7 @@ function PlayerMarker({
             type="button"
             onClick={() => setOpen(true)}
             className={`relative h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full border-2 shadow-lg overflow-hidden flex items-center justify-center font-display transition ${
-              isMine || isEmpty
+              isMine || canPlaceSelf
                 ? "cursor-pointer hover:scale-110 hover:ring-2 hover:ring-primary/60"
                 : "cursor-default"
             } ${isMine ? "ring-2 ring-primary" : ""}`}
@@ -608,9 +614,13 @@ function PlayerMarker({
               Remove me
             </button>
           </div>
-        ) : isSignedIn ? (
+        ) : isSignedIn && canPlaceSelf ? (
           <div className="flex flex-col gap-2">
-            <p className="text-xs text-muted-foreground">Take position #{number}</p>
+            <p className="text-xs text-muted-foreground">
+              {isEmpty
+                ? `Take position #${number}`
+                : `Replace this manual name with your Google account on position #${number}.`}
+            </p>
             <button
               type="button"
               onClick={async () => {
@@ -621,6 +631,12 @@ function PlayerMarker({
             >
               Place me here
             </button>
+          </div>
+        ) : isSignedIn ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-muted-foreground">
+              This position is already claimed by another Google account.
+            </p>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
