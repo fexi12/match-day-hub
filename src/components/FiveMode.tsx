@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useMatch, type Player, type Stat } from "@/lib/match-store";
 import { isFiveModeFormat } from "@/lib/match-formats";
 import { BarChart3, Goal, Plus, Shuffle, Target, Trophy, Users } from "lucide-react";
@@ -11,15 +10,13 @@ import {
   DEFAULT_TEAM_COUNT,
   FIVE_MODE_LABEL,
   TEAM_SIZE,
-  buildMiniMatches,
+  buildFiveTeamsFromLineup,
+  buildMiniMatchesFromTeams,
   emptyFiveModeState,
-  maxTeamsFor,
   normalizeScore,
   playerKey,
-  playersFromNames,
   sideScore,
   standingsFor,
-  uniquePlayers,
   updatePlayerAssist,
   updatePlayerGoal,
   type FiveMiniMatch,
@@ -56,16 +53,13 @@ export function FiveMode() {
   const current = getFiveMode(match.stats);
   const [targetMatches, setTargetMatches] = useState(current.targetMatches || DEFAULT_MATCH_COUNT);
   const [teamCount, setTeamCount] = useState(current.teamCount || DEFAULT_TEAM_COUNT);
-  const [manualNames, setManualNames] = useState("");
 
-  const squadPlayers = useMemo(
-    () => uniquePlayers([...match.home_players, ...match.away_players]),
-    [match.home_players, match.away_players],
+  const lineupTeams = useMemo(
+    () => buildFiveTeamsFromLineup(match.home_players),
+    [match.home_players],
   );
-  const manualPlayers = useMemo(() => playersFromNames(manualNames), [manualNames]);
-  const players = manualPlayers.length > 0 ? manualPlayers : squadPlayers;
-  const usingManualPlayers = manualPlayers.length > 0;
-  const maxTeams = players.length >= TEAM_SIZE * 2 ? maxTeamsFor(players) : 0;
+  const players = useMemo(() => lineupTeams.flatMap((team) => team.players), [lineupTeams]);
+  const maxTeams = players.length >= TEAM_SIZE * 2 ? lineupTeams.length : 0;
   const standings = useMemo(() => standingsFor(current.matches), [current.matches]);
   const totalGoals = current.matches.reduce(
     (sum, item) => sum + sideScore(item.home) + sideScore(item.away),
@@ -97,13 +91,14 @@ export function FiveMode() {
 
   const generate = () => {
     if (maxTeams < 2) {
-      toast.error("Need at least 10 players to generate 5v5 teams.");
+      toast.error("Need at least 10 players across the pitch teams to generate 5v5 teams.");
       return;
     }
 
     const teams = Math.min(maxTeams, Math.max(2, normalizeScore(teamCount || DEFAULT_TEAM_COUNT)));
+    const selectedTeams = lineupTeams.slice(0, teams);
     const count = Math.max(1, targetMatches || (teams * (teams - 1)) / 2);
-    const matches = buildMiniMatches(players, teams, count);
+    const matches = buildMiniMatchesFromTeams(selectedTeams, count);
 
     saveFiveMode({
       enabled: true,
@@ -113,15 +108,18 @@ export function FiveMode() {
     });
     setTeamCount(teams);
     setTargetMatches(count);
-    toast.success(`Generated ${teams} teams and ${count} mini-matches`);
+    toast.success(`Generated ${teams} pitch teams and ${count} mini-matches`);
   };
 
   const addMatch = () => {
-    const teams = current.teamCount || teamCount || DEFAULT_TEAM_COUNT;
+    const teams = Math.min(
+      maxTeams,
+      Math.max(2, current.teamCount || teamCount || DEFAULT_TEAM_COUNT),
+    );
     const nextRound = current.matches.length + 1;
-    const extra = buildMiniMatches(players, teams, nextRound).at(-1);
+    const extra = buildMiniMatchesFromTeams(lineupTeams.slice(0, teams), nextRound).at(-1);
     if (!extra) {
-      toast.error("Need at least 10 players to add a 5v5 match.");
+      toast.error("Need at least 10 players across the pitch teams to add a 5v5 match.");
       return;
     }
     saveFiveMode({
@@ -196,19 +194,11 @@ export function FiveMode() {
                 />
               </div>
             </div>
-            <div className="mt-4">
-              <p className="text-[10px] tracking-[0.2em] text-muted-foreground">PLAYER NAMES</p>
-              <Textarea
-                value={manualNames}
-                onChange={(e) => setManualNames(e.target.value)}
-                placeholder={"One player per line, e.g.\nFexi\nRafa\nMiguel"}
-                className="mt-1 min-h-24 resize-y text-sm"
-                aria-label="Manual player names"
-              />
-              <p className="mt-1 text-[10px] text-muted-foreground">
-                {usingManualPlayers
-                  ? `${players.length} pasted names loaded. These names override the pitch player pool for 5x5.`
-                  : `Using ${squadPlayers.length} names from the pitch player pool. Paste names above only if you want to override.`}
+            <div className="mt-4 rounded-lg border border-border bg-secondary/40 p-3">
+              <p className="text-[10px] tracking-[0.2em] text-muted-foreground">PLAYER SOURCE</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Using {players.length} player names from the 5x5x5 pitch teams above. Team 1 uses
+                slots 1-5, Team 2 uses slots 6-10, and Team 3 uses slots 11-15.
               </p>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -254,9 +244,8 @@ export function FiveMode() {
             </div>
             {current.matches.length === 0 ? (
               <div className="border-2 border-dashed border-primary/30 rounded-xl p-8 text-center text-muted-foreground">
-                Add player names in the setup box above or use the squad list, choose how many teams
-                you want, then generate the 5x5x5 session. Extra people are distributed across your
-                chosen teams.
+                Add player names to the 5x5x5 pitch teams above, choose how many teams you want to
+                use, then generate the 5x5x5 session. The mini-matches keep those team groups.
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">

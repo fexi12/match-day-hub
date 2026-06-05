@@ -31,6 +31,31 @@ assert.deepEqual(
   "all people are distributed across the chosen teams instead of forcing extra teams",
 );
 
+const lineupTeams = mod.buildFiveTeamsFromLineup(players.slice(0, 15));
+assert.deepEqual(
+  lineupTeams.map((team) => team.players.map((player) => player.name)),
+  [
+    ["Player 1", "Player 2", "Player 3", "Player 4", "Player 5"],
+    ["Player 6", "Player 7", "Player 8", "Player 9", "Player 10"],
+    ["Player 11", "Player 12", "Player 13", "Player 14"],
+  ],
+  "5x5x5 uses the existing pitch teams in order instead of re-shuffling names from a manual box",
+);
+
+const duplicateLineupTeams = mod.buildFiveTeamsFromLineup([
+  { name: "Luis" },
+  { name: "Luis" },
+  { name: "Rafa" },
+  { name: "" },
+  { name: "Miguel" },
+  { name: "Fexi" },
+]);
+assert.deepEqual(
+  duplicateLineupTeams[0].players.map((player) => player.name),
+  ["Luis", "Luis", "Rafa", "Miguel", "Fexi"],
+  "lineup team slots preserve duplicate player names instead of de-duping the team",
+);
+
 const matches = mod.buildMiniMatches(players, 3, 3);
 assert.equal(matches.length, 3, "chosen 3 teams create a round-robin of 3 matches");
 assert.deepEqual(

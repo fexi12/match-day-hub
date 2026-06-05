@@ -121,6 +121,24 @@ export const buildFiveTeams = (players: FivePlayer[], requestedTeamCount: number
   });
 };
 
+export const buildFiveTeamsFromLineup = (players: FivePlayer[]): FiveTeam[] => {
+  const pool = players
+    .map((player) => ({ ...player, name: player.name.trim() }))
+    .filter((player) => player.name);
+  const teams: FiveTeam[] = [];
+
+  for (let cursor = 0; cursor < pool.length; cursor += TEAM_SIZE) {
+    const playersForTeam = pool.slice(cursor, cursor + TEAM_SIZE);
+    if (playersForTeam.length === 0) continue;
+    teams.push({
+      name: `Team ${teams.length + 1}`,
+      players: playersForTeam,
+    });
+  }
+
+  return teams;
+};
+
 const sideFromTeam = (team: FiveTeam): FiveSide => ({
   ...team,
   score: 0,
@@ -138,12 +156,10 @@ const pairTeams = (teams: FiveTeam[]) => {
   return pairs;
 };
 
-export const buildMiniMatches = (
-  players: FivePlayer[],
-  requestedTeamCount: number,
+export const buildMiniMatchesFromTeams = (
+  teams: FiveTeam[],
   targetMatches?: number,
 ): FiveMiniMatch[] => {
-  const teams = buildFiveTeams(players, requestedTeamCount);
   if (teams.length < 2) return [];
 
   const pairs = pairTeams(teams);
@@ -158,6 +174,13 @@ export const buildMiniMatches = (
     };
   });
 };
+
+export const buildMiniMatches = (
+  players: FivePlayer[],
+  requestedTeamCount: number,
+  targetMatches?: number,
+): FiveMiniMatch[] =>
+  buildMiniMatchesFromTeams(buildFiveTeams(players, requestedTeamCount), targetMatches);
 
 export const sideScore = (side: FiveSide) => {
   if (Array.isArray(side.goals) && side.goals.length > 0) {
