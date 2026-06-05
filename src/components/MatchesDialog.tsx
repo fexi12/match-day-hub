@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Trash2, Plus } from "lucide-react";
@@ -95,15 +101,15 @@ export function MatchesDialog({ className }: { className?: string } = {}) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
+        <button
+          type="button"
           className={cn(
-            "font-display tracking-wider min-w-[140px] px-6 py-3 border-2 border-primary hover:bg-primary hover:text-primary-foreground transition",
-            className
+            "inline-flex items-center justify-center min-w-[140px] px-6 py-3 border-2 border-primary font-display text-sm tracking-wider rounded-md transition hover:bg-primary hover:text-primary-foreground",
+            className,
           )}
         >
           MATCHES
-        </Button>
+        </button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>

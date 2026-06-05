@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
-import { Button } from "@/components/ui/button";
 import { Plus, LogIn, LogOut, ShieldCheck, Menu } from "lucide-react";
 import logo from "@/assets/ararat-porto-logo.png";
 import venue from "@/assets/match-venue.jpg";
@@ -49,6 +48,8 @@ const navBtn =
   "font-display text-sm tracking-wider rounded-md transition " +
   "hover:bg-primary hover:text-primary-foreground";
 const navBtnActive = navBtn + " bg-primary text-primary-foreground";
+const navBtnPrimary = navBtnActive;
+const navBtnDisabled = navBtnPrimary + " disabled:pointer-events-none disabled:opacity-50";
 
 function Page() {
   const { match, saving, createNewMatch } = useMatch();
@@ -116,45 +117,30 @@ function Page() {
   const actions = user ? (
     <>
       {isAdmin && (
-        <Button
-          asChild
-          variant="outline"
-          className="font-display tracking-wider w-full justify-center"
-        >
-          <Link to="/admin">
-            <ShieldCheck className="h-4 w-4 mr-2" />
-            ADMIN
-          </Link>
-        </Button>
+        <Link to="/admin" className={`${navBtn} w-full`}>
+          <ShieldCheck className="h-4 w-4 mr-2" />
+          ADMIN
+        </Link>
       )}
-      <Button
-        asChild
-        variant="outline"
-        className="font-display tracking-wider w-full justify-center"
-      >
-        <Link to="/rankings">📊 RANKINGS</Link>
-      </Button>
-      <Button
+      <Link to="/rankings" className={`${navBtn} w-full`}>
+        📊 RANKINGS
+      </Link>
+      <button
+        type="button"
         onClick={handleNewGame}
         disabled={saving}
-        className="font-display tracking-wider w-full justify-center"
+        className={`${navBtnDisabled} w-full`}
       >
         <Plus className="h-4 w-4 mr-2" /> NEW GAME
-      </Button>
-      <Button
-        onClick={signOut}
-        variant="outline"
-        className="font-display tracking-wider w-full justify-center"
-      >
+      </button>
+      <button type="button" onClick={signOut} className={`${navBtn} w-full`}>
         <LogOut className="h-4 w-4 mr-2" /> SIGN OUT
-      </Button>
+      </button>
     </>
   ) : (
-    <Button asChild className="font-display tracking-wider w-full justify-center">
-      <Link to="/login">
-        <LogIn className="h-4 w-4 mr-2" /> SIGN IN
-      </Link>
-    </Button>
+    <Link to="/login" className={`${navBtnPrimary} w-full`}>
+      <LogIn className="h-4 w-4 mr-2" /> SIGN IN
+    </Link>
   );
 
   return (
@@ -196,31 +182,28 @@ function Page() {
               <>
                 <MatchesDialog className={navBtn} />
                 {isAdmin && (
-                  <Button asChild variant="outline" className="font-display tracking-wider">
-                    <Link to="/admin">
-                      <ShieldCheck className="h-4 w-4 mr-2" />
-                      ADMIN
-                    </Link>
-                  </Button>
+                  <Link to="/admin" className={navBtn}>
+                    <ShieldCheck className="h-4 w-4 mr-2" />
+                    ADMIN
+                  </Link>
                 )}
-                <Button
+                <button
+                  type="button"
                   onClick={handleNewGame}
                   disabled={saving}
-                  className="font-display tracking-wider"
+                  className={navBtnDisabled}
                 >
                   <Plus className="h-4 w-4 mr-2" /> NEW GAME
-                </Button>
-                <Button onClick={signOut} variant="outline" className="font-display tracking-wider">
+                </button>
+                <button type="button" onClick={signOut} className={navBtn}>
                   <LogOut className="h-4 w-4 mr-2" /> SIGN OUT
-                </Button>
+                </button>
               </>
             )}
             {!user && (
-              <Button asChild className="font-display tracking-wider">
-                <Link to="/login">
-                  <LogIn className="h-4 w-4 mr-2" /> SIGN IN
-                </Link>
-              </Button>
+              <Link to="/login" className={navBtnPrimary}>
+                <LogIn className="h-4 w-4 mr-2" /> SIGN IN
+              </Link>
             )}
           </div>
 
