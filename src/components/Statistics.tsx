@@ -44,7 +44,7 @@ export function Statistics() {
   const addGoal = (team: "home" | "away") =>
     update("goals", [
       ...match.goals,
-      { id: Date.now(), team, minute: "", scorer: "", assist: "", own_goal: false },
+      { id: Date.now(), team, scorer: "", assist: "", own_goal: false },
     ]);
   const updateGoal = (id: number, patch: Partial<Goal>) =>
     update(
@@ -392,15 +392,7 @@ function GoalColumn({
 
       <div className="flex flex-col gap-3">
         {goals.map((g) => (
-          <div key={g.id} className="grid grid-cols-[50px_56px_1fr_1fr_auto] gap-2 items-center">
-            <Input
-              placeholder="min"
-              value={g.minute}
-              onChange={(e) => onUpdate(g.id, { minute: e.target.value })}
-              readOnly={ro}
-              disabled={ro}
-              className="h-9 text-center bg-primary border-accent/40 text-primary-foreground"
-            />
+          <div key={g.id} className="grid grid-cols-[56px_1fr_1fr_auto] gap-2 items-center">
             <Button
               type="button"
               size="sm"

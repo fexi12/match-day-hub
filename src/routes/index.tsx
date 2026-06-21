@@ -90,6 +90,12 @@ function Page() {
       >
         RANKINGS
       </a>
+      <a
+        href="/season"
+        className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition"
+      >
+        SEASON
+      </a>
     </div>
   ) : (
     <div className="flex flex-col gap-1">
@@ -125,6 +131,9 @@ function Page() {
       <Link to="/rankings" className={`${navBtn} w-full`}>
         📊 RANKINGS
       </Link>
+      <a href="/season" className={`${navBtn} w-full`}>
+        🏆 SEASON
+      </a>
       <button
         type="button"
         onClick={handleNewGame}
@@ -173,9 +182,14 @@ function Page() {
                 VIDEOS
               </a>
               {user && (
-                <a href="/rankings" className="hover:text-accent transition">
-                  RANKINGS
-                </a>
+                <>
+                  <a href="/rankings" className="hover:text-accent transition">
+                    RANKINGS
+                  </a>
+                  <a href="/season" className="hover:text-accent transition">
+                    SEASON
+                  </a>
+                </>
               )}
             </div>
             {user && (
@@ -264,6 +278,9 @@ function Page() {
                   </a>
                   <a href="/rankings" className={navBtn}>
                     RANKINGS
+                  </a>
+                  <a href="/season" className={navBtn}>
+                    SEASON
                   </a>
                   <MatchesDialog className={navBtn} />
                 </>

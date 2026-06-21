@@ -18,7 +18,7 @@ export type Stat = { label: string; home: number; away: number };
 export type Goal = {
   id: number;
   team: "home" | "away";
-  minute: string;
+  minute?: string;
   own_goal?: boolean;
   // Human-readable snapshots kept forever for historical match reports.
   scorer: string;

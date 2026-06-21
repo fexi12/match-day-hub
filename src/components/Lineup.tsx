@@ -172,25 +172,6 @@ export function Lineup() {
     update(key, arr);
   };
 
-  const movePlayerToOtherTeam = (team: "home" | "away", i: number) => {
-    const fromKey = team === "home" ? "home_players" : "away_players";
-    const toKey = team === "home" ? "away_players" : "home_players";
-    const from = ensureSize(match[fromKey], size);
-    const to = ensureSize(match[toKey], size);
-    const player = from[i];
-    if (!player?.name && !player?.email) return;
-
-    const targetIndex = to.findIndex((p) => !p.name && !p.email);
-    const insertAt = targetIndex >= 0 ? targetIndex : i;
-    const displaced = to[insertAt] ?? { name: "" };
-    to[insertAt] = withPlayerIdentity(player);
-    from[i] = displaced.name || displaced.email ? withPlayerIdentity(displaced) : { name: "" };
-
-    update(fromKey, from);
-    update(toKey, to);
-    toast.success(`Moved ${player.name || "player"} to ${team === "home" ? "away" : "home"} team`);
-  };
-
   const removeSelf = (team: "home" | "away", i: number) => {
     if (!user) return;
     const key = team === "home" ? "home_players" : "away_players";
@@ -356,9 +337,7 @@ export function Lineup() {
               size={size}
               players={homePlayers}
               canEdit={canEdit}
-              canMove={!isFiveMode}
               onChange={(i, patch) => setPlayer("home", i, patch)}
-              onMove={(i) => movePlayerToOtherTeam("home", i)}
             />
             {!isFiveMode && (
               <Roster
@@ -367,9 +346,7 @@ export function Lineup() {
                 size={size}
                 players={awayPlayers}
                 canEdit={canEdit}
-                canMove={!isFiveMode}
                 onChange={(i, patch) => setPlayer("away", i, patch)}
-                onMove={(i) => movePlayerToOtherTeam("away", i)}
               />
             )}
 
@@ -421,18 +398,14 @@ function Roster({
   size,
   players,
   canEdit,
-  canMove = false,
   onChange,
-  onMove,
 }: {
   title: string;
   color: string;
   size: number;
   players: Player[];
   canEdit: boolean;
-  canMove?: boolean;
   onChange: (i: number, patch: Partial<Player>) => void;
-  onMove?: (i: number) => void;
 }) {
   return (
     <div className="border-2 border-primary rounded-xl p-5 bg-card">
@@ -450,9 +423,7 @@ function Roster({
             index={i}
             player={players[i] ?? { name: "" }}
             canEdit={canEdit}
-            canMove={canMove}
             onChange={(patch) => onChange(i, patch)}
-            onMove={onMove ? () => onMove(i) : undefined}
           />
         ))}
       </div>
@@ -484,16 +455,12 @@ function PlayerRow({
   index,
   player,
   canEdit,
-  canMove,
   onChange,
-  onMove,
 }: {
   index: number;
   player: Player;
   canEdit: boolean;
-  canMove: boolean;
   onChange: (patch: Partial<Player>) => void;
-  onMove?: () => void;
 }) {
   return (
     <div className="flex items-center gap-2">
@@ -506,19 +473,6 @@ function PlayerRow({
         readOnly={!canEdit}
         disabled={!canEdit}
       />
-      {canMove && (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={!canEdit || (!player.name && !player.email)}
-          onClick={onMove}
-          title="Move player to the other team for this match"
-          className="h-9 px-2 font-display"
-        >
-          ↔
-        </Button>
-      )}
     </div>
   );
 }
