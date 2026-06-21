@@ -63,7 +63,18 @@ export const playerIdentity = (player: Pick<Player, "id" | "email" | "name">): s
   return nameKey ? `name:${nameKey}` : "";
 };
 
-export const withPlayerIdentity = (player: Player): Player => {
+const manualPlayerId = () => {
+  const randomId = globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
+  return `manual:${randomId}`;
+};
+
+export const withPlayerIdentity = (
+  player: Player,
+  opts: { generateManualId?: boolean } = {},
+): Player => {
+  if (player.id?.trim()) return { ...player, id: player.id.trim() };
+  if (player.email?.trim()) return { ...player, id: `email:${player.email.trim().toLowerCase()}` };
+  if (opts.generateManualId && player.name?.trim()) return { ...player, id: manualPlayerId() };
   const id = playerIdentity(player);
   return id ? { ...player, id } : player;
 };

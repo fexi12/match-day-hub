@@ -168,7 +168,7 @@ export function Lineup() {
   const setPlayer = (team: "home" | "away", i: number, patch: Partial<Player>) => {
     const key = team === "home" ? "home_players" : "away_players";
     const arr = ensureSize(match[key], size);
-    arr[i] = withPlayerIdentity({ ...arr[i], ...patch });
+    arr[i] = withPlayerIdentity({ ...arr[i], ...patch }, { generateManualId: true });
     update(key, arr);
   };
 
