@@ -4,17 +4,20 @@ export const DEFAULT_TEAM_COUNT = 3;
 export const DEFAULT_MATCH_COUNT = 3;
 
 export type FivePlayer = {
+  id?: string;
   name: string;
   photo_url?: string;
   email?: string;
 };
 
 export type PlayerGoal = {
+  playerId?: string;
   playerName: string;
   goals: number;
 };
 
 export type PlayerAssist = {
+  playerId?: string;
   playerName: string;
   assists: number;
 };
@@ -79,7 +82,19 @@ export const normalizeScore = (value: number) =>
   Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
 
 export const playerKey = (player: FivePlayer) =>
-  (player.email?.trim().toLowerCase() || player.name.trim().toLowerCase()).replace(/\s+/g, " ");
+  (
+    player.id?.trim() ||
+    player.email?.trim().toLowerCase() ||
+    player.name.trim().toLowerCase()
+  ).replace(/\s+/g, " ");
+
+const statBelongsToPlayer = (
+  row: { playerId?: string; playerName: string },
+  player: FivePlayer,
+) => {
+  const key = playerKey(player);
+  return row.playerId ? row.playerId === key : row.playerName === player.name;
+};
 
 export const uniquePlayers = (players: FivePlayer[]): FivePlayer[] => {
   const seen = new Set<string>();
@@ -204,7 +219,7 @@ export const updatePlayerGoal = (
   matches: FiveMiniMatch[],
   matchId: number,
   side: "home" | "away",
-  playerName: string,
+  player: FivePlayer,
   goals: number,
 ): FiveMiniMatch[] =>
   matches.map((match) => {
@@ -212,9 +227,14 @@ export const updatePlayerGoal = (
 
     const cleanGoals = normalizeScore(goals);
     const currentSide = match[side];
-    const withoutPlayer = (currentSide.goals ?? []).filter((row) => row.playerName !== playerName);
+    const playerId = playerKey(player);
+    const withoutPlayer = (currentSide.goals ?? []).filter(
+      (row) => !statBelongsToPlayer(row, player),
+    );
     const nextGoals =
-      cleanGoals > 0 ? [...withoutPlayer, { playerName, goals: cleanGoals }] : withoutPlayer;
+      cleanGoals > 0
+        ? [...withoutPlayer, { playerId, playerName: player.name, goals: cleanGoals }]
+        : withoutPlayer;
     const nextSide = {
       ...currentSide,
       goals: nextGoals,
@@ -228,7 +248,7 @@ export const updatePlayerAssist = (
   matches: FiveMiniMatch[],
   matchId: number,
   side: "home" | "away",
-  playerName: string,
+  player: FivePlayer,
   assists: number,
 ): FiveMiniMatch[] =>
   matches.map((match) => {
@@ -236,20 +256,57 @@ export const updatePlayerAssist = (
 
     const cleanAssists = normalizeScore(assists);
     const currentSide = match[side];
+    const playerId = playerKey(player);
     const withoutPlayer = (currentSide.assists ?? []).filter(
-      (row) => row.playerName !== playerName,
+      (row) => !statBelongsToPlayer(row, player),
     );
     const nextAssists =
-      cleanAssists > 0 ? [...withoutPlayer, { playerName, assists: cleanAssists }] : withoutPlayer;
+      cleanAssists > 0
+        ? [...withoutPlayer, { playerId, playerName: player.name, assists: cleanAssists }]
+        : withoutPlayer;
 
     return { ...match, [side]: { ...currentSide, assists: nextAssists } };
   });
 
 const goalsForPlayer = (side: FiveSide, player: FivePlayer) =>
-  (side.goals ?? []).find((row) => row.playerName === player.name)?.goals ?? 0;
+  (side.goals ?? []).find((row) => statBelongsToPlayer(row, player))?.goals ?? 0;
 
 const assistsForPlayer = (side: FiveSide, player: FivePlayer) =>
-  (side.assists ?? []).find((row) => row.playerName === player.name)?.assists ?? 0;
+  (side.assists ?? []).find((row) => statBelongsToPlayer(row, player))?.assists ?? 0;
+
+const renameSidePlayer = (side: FiveSide, player: FivePlayer, nextName: string): FiveSide => {
+  const displayName = nextName;
+  // If legacy generated data has no id, freeze the current key as the id before renaming.
+  // That way future goals/assists stay attached even when the visible name changes again.
+  const renamedPlayer = { ...player, id: player.id ?? playerKey(player), name: displayName };
+  return {
+    ...side,
+    players: side.players.map((item) =>
+      playerKey(item) === playerKey(player) ? renamedPlayer : item,
+    ),
+    goals: (side.goals ?? []).map((row) =>
+      statBelongsToPlayer(row, player)
+        ? { ...row, playerId: playerKey(player), playerName: displayName }
+        : row,
+    ),
+    assists: (side.assists ?? []).map((row) =>
+      statBelongsToPlayer(row, player)
+        ? { ...row, playerId: playerKey(player), playerName: displayName }
+        : row,
+    ),
+  };
+};
+
+export const renamePlayerInMiniMatches = (
+  matches: FiveMiniMatch[],
+  player: FivePlayer,
+  nextName: string,
+): FiveMiniMatch[] =>
+  matches.map((match) => ({
+    ...match,
+    home: renameSidePlayer(match.home, player, nextName),
+    away: renameSidePlayer(match.away, player, nextName),
+  }));
 
 export const teamStandingsFor = (matches: FiveMiniMatch[]): TeamStanding[] => {
   const table = new Map<string, TeamStanding>();

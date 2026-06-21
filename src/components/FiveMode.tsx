@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useMatch, type Player, type Stat } from "@/lib/match-store";
+import { useMatch, type Stat } from "@/lib/match-store";
 import { isFiveModeFormat } from "@/lib/match-formats";
 import { Goal, Plus, Shuffle, Target, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -15,9 +15,11 @@ import {
   emptyFiveModeState,
   normalizeScore,
   playerKey,
+  renamePlayerInMiniMatches,
   sideScore,
   updatePlayerAssist,
   updatePlayerGoal,
+  type FivePlayer,
   type FiveMiniMatch,
   type FiveModeState,
   type FiveSide,
@@ -40,11 +42,14 @@ const initials = (name: string) =>
     .map((x) => x[0]?.toUpperCase())
     .join("") || "?";
 
-const goalValue = (side: FiveSide, player: Player) =>
-  side.goals?.find((row) => row.playerName === player.name)?.goals ?? 0;
+const statBelongsToPlayer = (row: { playerId?: string; playerName: string }, player: FivePlayer) =>
+  row.playerId ? row.playerId === playerKey(player) : row.playerName === player.name;
 
-const assistValue = (side: FiveSide, player: Player) =>
-  side.assists?.find((row) => row.playerName === player.name)?.assists ?? 0;
+const goalValue = (side: FiveSide, player: FivePlayer) =>
+  side.goals?.find((row) => statBelongsToPlayer(row, player))?.goals ?? 0;
+
+const assistValue = (side: FiveSide, player: FivePlayer) =>
+  side.assists?.find((row) => statBelongsToPlayer(row, player))?.assists ?? 0;
 
 export function FiveMode() {
   const { match, update, canEdit } = useMatch();
@@ -123,17 +128,24 @@ export function FiveMode() {
     setTargetMatches(nextRound);
   };
 
-  const updateGoal = (id: number, side: "home" | "away", playerName: string, goals: number) => {
+  const updateGoal = (id: number, side: "home" | "away", player: FivePlayer, goals: number) => {
     saveFiveMode({
       ...current,
-      matches: updatePlayerGoal(current.matches, id, side, playerName, goals),
+      matches: updatePlayerGoal(current.matches, id, side, player, goals),
     });
   };
 
-  const updateAssist = (id: number, side: "home" | "away", playerName: string, assists: number) => {
+  const updateAssist = (id: number, side: "home" | "away", player: FivePlayer, assists: number) => {
     saveFiveMode({
       ...current,
-      matches: updatePlayerAssist(current.matches, id, side, playerName, assists),
+      matches: updatePlayerAssist(current.matches, id, side, player, assists),
+    });
+  };
+
+  const renamePlayer = (player: FivePlayer, nextName: string) => {
+    saveFiveMode({
+      ...current,
+      matches: renamePlayerInMiniMatches(current.matches, player, nextName),
     });
   };
 
@@ -247,6 +259,7 @@ export function FiveMode() {
                     canEdit={canEdit}
                     onGoal={updateGoal}
                     onAssist={updateAssist}
+                    onRename={renamePlayer}
                   />
                 ))}
               </div>
@@ -263,11 +276,13 @@ function MiniMatchCard({
   canEdit,
   onGoal,
   onAssist,
+  onRename,
 }: {
   miniMatch: FiveMiniMatch;
   canEdit: boolean;
-  onGoal: (id: number, side: "home" | "away", playerName: string, goals: number) => void;
-  onAssist: (id: number, side: "home" | "away", playerName: string, assists: number) => void;
+  onGoal: (id: number, side: "home" | "away", player: FivePlayer, goals: number) => void;
+  onAssist: (id: number, side: "home" | "away", player: FivePlayer, assists: number) => void;
+  onRename: (player: FivePlayer, nextName: string) => void;
 }) {
   const homeScore = sideScore(miniMatch.home);
   const awayScore = sideScore(miniMatch.away);
@@ -291,6 +306,7 @@ function MiniMatchCard({
           canEdit={canEdit}
           onGoal={onGoal}
           onAssist={onAssist}
+          onRename={onRename}
         />
         <TeamGoalBlock
           title={miniMatch.away.name}
@@ -300,6 +316,7 @@ function MiniMatchCard({
           canEdit={canEdit}
           onGoal={onGoal}
           onAssist={onAssist}
+          onRename={onRename}
         />
       </div>
     </div>
@@ -314,14 +331,16 @@ function TeamGoalBlock({
   canEdit,
   onGoal,
   onAssist,
+  onRename,
 }: {
   title: string;
   team: FiveSide;
   side: "home" | "away";
   matchId: number;
   canEdit: boolean;
-  onGoal: (id: number, side: "home" | "away", playerName: string, goals: number) => void;
-  onAssist: (id: number, side: "home" | "away", playerName: string, assists: number) => void;
+  onGoal: (id: number, side: "home" | "away", player: FivePlayer, goals: number) => void;
+  onAssist: (id: number, side: "home" | "away", player: FivePlayer, assists: number) => void;
+  onRename: (player: FivePlayer, nextName: string) => void;
 }) {
   return (
     <div className="rounded-lg border border-border p-3">
@@ -341,7 +360,13 @@ function TeamGoalBlock({
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs text-primary-foreground">
                 {initials(player.name)}
               </span>
-              <span className="truncate text-sm">{player.name}</span>
+              <Input
+                value={player.name}
+                onChange={(e) => onRename(player, e.target.value)}
+                disabled={!canEdit}
+                className="h-8 min-w-0 text-sm"
+                aria-label="Player name"
+              />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="flex items-center gap-1">
@@ -350,7 +375,7 @@ function TeamGoalBlock({
                   type="number"
                   min={0}
                   value={goalValue(team, player)}
-                  onChange={(e) => onGoal(matchId, side, player.name, Number(e.target.value))}
+                  onChange={(e) => onGoal(matchId, side, player, Number(e.target.value))}
                   disabled={!canEdit}
                   className="h-8 w-11 text-center font-display"
                   aria-label={`${player.name} goals`}
@@ -362,7 +387,7 @@ function TeamGoalBlock({
                   type="number"
                   min={0}
                   value={assistValue(team, player)}
-                  onChange={(e) => onAssist(matchId, side, player.name, Number(e.target.value))}
+                  onChange={(e) => onAssist(matchId, side, player, Number(e.target.value))}
                   disabled={!canEdit}
                   className="h-8 w-11 text-center font-display"
                   aria-label={`${player.name} assists`}
