@@ -28,7 +28,7 @@ Built with Lovable (initial scaffold), now maintained on GitHub with full contro
 - **Statistics** — shots, possession, corners, fouls, cards
 - **Video highlights** — embed YouTube / video links
 - **Kit display** — jersey gallery per match
-- **Role system** — admin, moderator (editor), viewer
+- **Role system** — admin, editor-by-default, revoked viewer
 - **OAuth** — Google sign-in
 - **Admin panel** — approve / revoke editor access
 
@@ -50,6 +50,7 @@ Create a project at [supabase.com](https://supabase.com), then run the migration
 -- 20260522170016_*.sql   → claim_lineup_slot() function + RLS
 -- 20260522170028_*.sql   → revoke public access to claim_lineup_slot
 -- 20260522171258_*.sql   → claim_lineup_slot implementation
+-- 20260606170000_*.sql   → edit-by-default, admin can revoke
 ```
 
 ### 2. Promote yourself as admin
@@ -131,7 +132,7 @@ supabase/
 ## Database Schema
 
 - **`matches`** — core fixture data (date, kickoff, location, kits, lineups, stats, goals, videos)
-- **`user_roles`** — `user_id` + `role` (`admin` | `moderator`) — controls who can edit
+- **`user_roles`** — `user_id` + `role` (`admin` | `moderator` | `user`); signed-in users edit by default, `user` marks revoked/viewer access
 - **`player_avatars`** — email → avatar URL (auto-populated on Google OAuth)
 - **`storage.player-photos`** — authenticated file uploads for player photos
 

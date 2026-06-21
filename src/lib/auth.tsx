@@ -135,8 +135,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(({ data }) => {
         const roles = new Set((data ?? []).map((r) => r.role));
         const admin = roles.has("admin");
+        const revoked = roles.has("user");
         setIsAdmin(admin);
-        setIsApproved(admin || roles.has("moderator"));
+        // Everyone signed in can edit by default. Admins can revoke editor access
+        // from /admin, which stores the existing "user" role as a deny marker.
+        setIsApproved(admin || !revoked);
       });
 
     // Save Google profile photo so squads can show it by email

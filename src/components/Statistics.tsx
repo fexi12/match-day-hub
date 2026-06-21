@@ -1,7 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BarChart3, Plus, Trash2, Trophy } from "lucide-react";
-import { useMatch, type Goal, type Stat } from "@/lib/match-store";
+import { playerIdentity, useMatch, type Goal, type Player, type Stat } from "@/lib/match-store";
 import { reportModeForFormat } from "@/lib/match-report";
 import {
   emptyFiveModeState,
@@ -86,6 +86,7 @@ export function Statistics() {
             onUpdate={updateGoal}
             onRemove={removeGoal}
             ro={ro}
+            players={match.home_players}
           />
           <GoalColumn
             title={`${match.opponent} Goals`}
@@ -94,6 +95,7 @@ export function Statistics() {
             onUpdate={updateGoal}
             onRemove={removeGoal}
             ro={ro}
+            players={match.away_players}
           />
         </div>
 
@@ -254,6 +256,7 @@ function GoalColumn({
   onUpdate,
   onRemove,
   ro,
+  players,
 }: {
   title: string;
   goals: Goal[];
@@ -261,7 +264,30 @@ function GoalColumn({
   onUpdate: (id: number, patch: Partial<Goal>) => void;
   onRemove: (id: number) => void;
   ro: boolean;
+  players: Player[];
 }) {
+  const selectablePlayers = players
+    .map((player) => ({ ...player, id: playerIdentity(player) }))
+    .filter((player) => player.id && (player.name || player.email));
+
+  const applyPlayer = (goalId: number, role: "scorer" | "assist", value: string) => {
+    const player = selectablePlayers.find((p) => p.id === value);
+    if (!player) {
+      onUpdate(
+        goalId,
+        role === "scorer"
+          ? { scorer_id: undefined, scorer: "" }
+          : { assist_id: undefined, assist: "" },
+      );
+      return;
+    }
+    onUpdate(
+      goalId,
+      role === "scorer"
+        ? { scorer_id: player.id, scorer: player.name }
+        : { assist_id: player.id, assist: player.name },
+    );
+  };
   return (
     <div className="border-2 border-accent/40 rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
@@ -291,21 +317,22 @@ function GoalColumn({
               disabled={ro}
               className="h-9 text-center bg-primary border-accent/40 text-primary-foreground"
             />
-            <Input
-              placeholder="Scorer"
-              value={g.scorer}
-              onChange={(e) => onUpdate(g.id, { scorer: e.target.value })}
-              readOnly={ro}
+            <PlayerSelect
+              label="Scorer"
+              value={g.scorer_id ?? ""}
+              snapshot={g.scorer}
+              players={selectablePlayers}
               disabled={ro}
-              className="h-9 bg-primary border-accent/40 text-primary-foreground"
+              onChange={(value) => applyPlayer(g.id, "scorer", value)}
             />
-            <Input
-              placeholder="Assist"
-              value={g.assist}
-              onChange={(e) => onUpdate(g.id, { assist: e.target.value })}
-              readOnly={ro}
+            <PlayerSelect
+              label="Assist"
+              value={g.assist_id ?? ""}
+              snapshot={g.assist}
+              players={selectablePlayers}
               disabled={ro}
-              className="h-9 bg-primary border-accent/40 text-primary-foreground"
+              allowNone
+              onChange={(value) => applyPlayer(g.id, "assist", value)}
             />
             <button
               onClick={() => onRemove(g.id)}
@@ -319,5 +346,46 @@ function GoalColumn({
         ))}
       </div>
     </div>
+  );
+}
+
+function PlayerSelect({
+  label,
+  value,
+  snapshot,
+  players,
+  disabled,
+  allowNone = false,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  snapshot: string;
+  players: Array<Player & { id: string }>;
+  disabled: boolean;
+  allowNone?: boolean;
+  onChange: (value: string) => void;
+}) {
+  const selectedExists = value && players.some((player) => player.id === value);
+  return (
+    <select
+      aria-label={label}
+      value={selectedExists ? value : ""}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      className="h-9 min-w-0 rounded-md border border-accent/40 bg-primary px-2 text-sm text-primary-foreground disabled:opacity-60"
+    >
+      <option value="">{snapshot || (allowNone ? "No assist" : label)}</option>
+      {snapshot && !selectedExists && (
+        <option value="" disabled>
+          {snapshot} (snapshot)
+        </option>
+      )}
+      {players.map((player) => (
+        <option key={player.id} value={player.id}>
+          {player.name || player.email}
+        </option>
+      ))}
+    </select>
   );
 }

@@ -49,12 +49,16 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
 
     return usersRes.users.map((u) => {
       const set = byUser.get(u.id) ?? new Set<string>();
+      const isAdmin = set.has("admin");
+      const isRevoked = set.has("user");
       return {
         id: u.id,
         email: u.email ?? null,
         created_at: u.created_at,
-        is_admin: set.has("admin"),
-        is_approved: set.has("admin") || set.has("moderator"),
+        is_admin: isAdmin,
+        // Editors are allowed by default. The existing "user" role is used as
+        // an explicit deny/revoked marker so admins can turn access off later.
+        is_approved: isAdmin || !isRevoked,
       };
     });
   });
@@ -76,15 +80,22 @@ export const setUserApproval = createServerFn({ method: "POST" })
     if (data.approved) {
       const { error } = await supabaseAdmin
         .from("user_roles")
-        .upsert({ user_id: data.user_id, role: "moderator" }, { onConflict: "user_id,role" });
+        .delete()
+        .eq("user_id", data.user_id)
+        .eq("role", "user");
       if (error) throw new Error(error.message);
     } else {
-      const { error } = await supabaseAdmin
+      const { error: deleteModeratorError } = await supabaseAdmin
         .from("user_roles")
         .delete()
         .eq("user_id", data.user_id)
         .eq("role", "moderator");
-      if (error) throw new Error(error.message);
+      if (deleteModeratorError) throw new Error(deleteModeratorError.message);
+
+      const { error: revokeError } = await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: data.user_id, role: "user" }, { onConflict: "user_id,role" });
+      if (revokeError) throw new Error(revokeError.message);
     }
     return { ok: true };
   });

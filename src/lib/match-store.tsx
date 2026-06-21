@@ -13,14 +13,19 @@ import { toast } from "sonner";
 import type { Format } from "@/lib/match-formats";
 
 export type { Format };
-export type Player = { name: string; photo_url?: string; email?: string };
+export type Player = { id?: string; name: string; photo_url?: string; email?: string };
 export type Stat = { label: string; home: number; away: number };
 export type Goal = {
   id: number;
   team: "home" | "away";
   minute: string;
+  // Human-readable snapshots kept forever for historical match reports.
   scorer: string;
   assist: string;
+  // Stable player identities used for rankings/history even if the player later
+  // moves teams in another match or their name is edited.
+  scorer_id?: string;
+  assist_id?: string;
 };
 export type Video = { id: number; title: string; url: string };
 
@@ -40,6 +45,27 @@ export type MatchState = {
   stats: Stat[];
   goals: Goal[];
   videos: Video[];
+};
+
+const normalizePlayerKey = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+export const playerIdentity = (player: Pick<Player, "id" | "email" | "name">): string => {
+  if (player.id?.trim()) return player.id.trim();
+  if (player.email?.trim()) return `email:${player.email.trim().toLowerCase()}`;
+  const nameKey = normalizePlayerKey(player.name ?? "");
+  return nameKey ? `name:${nameKey}` : "";
+};
+
+export const withPlayerIdentity = (player: Player): Player => {
+  const id = playerIdentity(player);
+  return id ? { ...player, id } : player;
 };
 
 const DEFAULT_STATS: Stat[] = [
@@ -71,14 +97,15 @@ export const defaultMatch = (): MatchState => ({
 export function normalizePlayers(raw: unknown): Player[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((p) => {
-    if (typeof p === "string") return { name: p };
+    if (typeof p === "string") return withPlayerIdentity({ name: p });
     if (p && typeof p === "object") {
       const obj = p as Record<string, unknown>;
-      return {
+      return withPlayerIdentity({
+        id: typeof obj.id === "string" ? obj.id : undefined,
         name: typeof obj.name === "string" ? obj.name : "",
         photo_url: typeof obj.photo_url === "string" ? obj.photo_url : undefined,
         email: typeof obj.email === "string" ? obj.email : undefined,
-      };
+      });
     }
     return { name: "" };
   });
@@ -99,7 +126,7 @@ const MatchCtx = createContext<Ctx | null>(null);
 
 export function MatchProvider({ children }: { children: ReactNode }) {
   const { user, isApproved } = useAuth();
-  // A logged-in user can edit only if an admin has approved them (admin or moderator role).
+  // A logged-in user can edit by default unless an admin revokes access.
   // Toggle this per user from the /admin "Editor Approvals" page.
   const canEdit = !!user && isApproved;
   const [match, setMatch] = useState<MatchState>(defaultMatch());
@@ -197,7 +224,7 @@ export function MatchProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (!isApproved) {
-        toast.error("Your account isn't approved to edit yet. Ask an admin for editor access.");
+        toast.error("Your editor access was revoked. Ask an admin to restore it.");
         return;
       }
       setMatch((m) => ({ ...m, [key]: value }));
@@ -211,8 +238,22 @@ export function MatchProvider({ children }: { children: ReactNode }) {
   const load = useCallback((m: MatchState) => setMatch(m), []);
 
   const createNewMatch = useCallback(async (): Promise<string | null> => {
+    const current = matchRef.current;
     const next = defaultMatch();
     next.name = `Matchday ${Date.now().toString().slice(-4)}`;
+    next.opponent = current.opponent;
+    next.match_date = current.match_date;
+    next.kickoff = current.kickoff;
+    next.duration = current.duration;
+    next.location = current.location;
+    next.format = current.format;
+    next.home_color = current.home_color;
+    next.away_color = current.away_color;
+    // Generate the next match from the current match-specific teams, keeping
+    // player identities but resetting match events so goals/assists from the
+    // previous game remain tracked only on that historical match.
+    next.home_players = normalizePlayers(current.home_players).filter((p) => p.name || p.email);
+    next.away_players = normalizePlayers(current.away_players).filter((p) => p.name || p.email);
     setMatch(next);
     // Pass the fresh state explicitly — `save` would otherwise read the previous
     // match from its closure on this render tick.
