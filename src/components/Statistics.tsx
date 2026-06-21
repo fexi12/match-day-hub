@@ -42,7 +42,10 @@ export function Statistics() {
   }
 
   const addGoal = (team: "home" | "away") =>
-    update("goals", [...match.goals, { id: Date.now(), team, minute: "", scorer: "", assist: "" }]);
+    update("goals", [
+      ...match.goals,
+      { id: Date.now(), team, minute: "", scorer: "", assist: "", own_goal: false },
+    ]);
   const updateGoal = (id: number, patch: Partial<Goal>) =>
     update(
       "goals",
@@ -87,6 +90,7 @@ export function Statistics() {
             onRemove={removeGoal}
             ro={ro}
             players={match.home_players}
+            ownGoalPlayers={match.away_players}
           />
           <GoalColumn
             title={`${match.opponent} Goals`}
@@ -96,6 +100,7 @@ export function Statistics() {
             onRemove={removeGoal}
             ro={ro}
             players={match.away_players}
+            ownGoalPlayers={match.home_players}
           />
         </div>
 
@@ -257,6 +262,7 @@ function GoalColumn({
   onRemove,
   ro,
   players,
+  ownGoalPlayers,
 }: {
   title: string;
   goals: Goal[];
@@ -265,16 +271,22 @@ function GoalColumn({
   onRemove: (id: number) => void;
   ro: boolean;
   players: Player[];
+  ownGoalPlayers: Player[];
 }) {
-  const selectablePlayers = players
-    .map((player) => ({ ...player, id: playerIdentity(player) }))
-    .filter((player) => player.id && (player.name || player.email));
+  const selectableFor = (items: Player[]) =>
+    items
+      .map((player) => ({ ...player, id: playerIdentity(player) }))
+      .filter((player) => player.id && (player.name || player.email));
+  const selectablePlayers = selectableFor(players);
+  const selectableOwnGoalPlayers = selectableFor(ownGoalPlayers);
 
-  const applyPlayer = (goalId: number, role: "scorer" | "assist", value: string) => {
-    const player = selectablePlayers.find((p) => p.id === value);
+  const applyPlayer = (goal: Goal, role: "scorer" | "assist", value: string) => {
+    const sourcePlayers =
+      goal.own_goal && role === "scorer" ? selectableOwnGoalPlayers : selectablePlayers;
+    const player = sourcePlayers.find((p) => p.id === value);
     if (!player) {
       onUpdate(
-        goalId,
+        goal.id,
         role === "scorer"
           ? { scorer_id: undefined, scorer: "" }
           : { assist_id: undefined, assist: "" },
@@ -282,11 +294,21 @@ function GoalColumn({
       return;
     }
     onUpdate(
-      goalId,
+      goal.id,
       role === "scorer"
         ? { scorer_id: player.id, scorer: player.name }
         : { assist_id: player.id, assist: player.name },
     );
+  };
+
+  const toggleOwnGoal = (goal: Goal) => {
+    onUpdate(goal.id, {
+      own_goal: !goal.own_goal,
+      scorer_id: undefined,
+      scorer: "",
+      assist_id: undefined,
+      assist: "",
+    });
   };
   return (
     <div className="border-2 border-accent/40 rounded-xl p-5">
@@ -308,7 +330,7 @@ function GoalColumn({
 
       <div className="flex flex-col gap-3">
         {goals.map((g) => (
-          <div key={g.id} className="grid grid-cols-[50px_1fr_1fr_auto] gap-2 items-center">
+          <div key={g.id} className="grid grid-cols-[50px_56px_1fr_1fr_auto] gap-2 items-center">
             <Input
               placeholder="min"
               value={g.minute}
@@ -317,22 +339,33 @@ function GoalColumn({
               disabled={ro}
               className="h-9 text-center bg-primary border-accent/40 text-primary-foreground"
             />
+            <Button
+              type="button"
+              size="sm"
+              variant={g.own_goal ? "destructive" : "outline"}
+              onClick={() => toggleOwnGoal(g)}
+              disabled={ro}
+              className="h-9 px-2 font-display text-xs"
+              title="Own goal: goal counts for this team, scorer is selected from the opponent"
+            >
+              OG
+            </Button>
             <PlayerSelect
-              label="Scorer"
+              label={g.own_goal ? "Own goal by" : "Scorer"}
               value={g.scorer_id ?? ""}
               snapshot={g.scorer}
-              players={selectablePlayers}
+              players={g.own_goal ? selectableOwnGoalPlayers : selectablePlayers}
               disabled={ro}
-              onChange={(value) => applyPlayer(g.id, "scorer", value)}
+              onChange={(value) => applyPlayer(g, "scorer", value)}
             />
             <PlayerSelect
               label="Assist"
               value={g.assist_id ?? ""}
               snapshot={g.assist}
               players={selectablePlayers}
-              disabled={ro}
+              disabled={ro || !!g.own_goal}
               allowNone
-              onChange={(value) => applyPlayer(g.id, "assist", value)}
+              onChange={(value) => applyPlayer(g, "assist", value)}
             />
             <button
               onClick={() => onRemove(g.id)}

@@ -14,6 +14,7 @@ export type PlayerGoal = {
   playerId?: string;
   playerName: string;
   goals: number;
+  ownGoal?: boolean;
 };
 
 export type PlayerAssist = {
@@ -151,18 +152,19 @@ export const buildFiveTeamsFromLineup = (players: FivePlayer[]): FiveTeam[] => {
   const pool = players
     .map((player) => ({ ...player, name: player.name.trim() }))
     .filter((player) => player.name);
-  const teams: FiveTeam[] = [];
-
-  for (let cursor = 0; cursor < pool.length; cursor += TEAM_SIZE) {
-    const playersForTeam = pool.slice(cursor, cursor + TEAM_SIZE);
-    if (playersForTeam.length === 0) continue;
-    teams.push({
-      name: `Team ${teams.length + 1}`,
-      players: playersForTeam,
-    });
+  if (pool.length < TEAM_SIZE * 2) {
+    return pool.length
+      ? [
+          {
+            name: "Team 1",
+            players: pool,
+          },
+        ]
+      : [];
   }
 
-  return teams;
+  const teamCount = Math.max(2, Math.ceil(pool.length / TEAM_SIZE));
+  return buildFiveTeams(pool, teamCount);
 };
 
 const sideFromTeam = (team: FiveTeam): FiveSide => ({
@@ -221,6 +223,7 @@ export const updatePlayerGoal = (
   side: "home" | "away",
   player: FivePlayer,
   goals: number,
+  opts: { ownGoal?: boolean } = {},
 ): FiveMiniMatch[] =>
   matches.map((match) => {
     if (match.id !== matchId) return match;
@@ -228,12 +231,13 @@ export const updatePlayerGoal = (
     const cleanGoals = normalizeScore(goals);
     const currentSide = match[side];
     const playerId = playerKey(player);
+    const ownGoal = !!opts.ownGoal;
     const withoutPlayer = (currentSide.goals ?? []).filter(
-      (row) => !statBelongsToPlayer(row, player),
+      (row) => !(statBelongsToPlayer(row, player) && !!row.ownGoal === ownGoal),
     );
     const nextGoals =
       cleanGoals > 0
-        ? [...withoutPlayer, { playerId, playerName: player.name, goals: cleanGoals }]
+        ? [...withoutPlayer, { playerId, playerName: player.name, goals: cleanGoals, ownGoal }]
         : withoutPlayer;
     const nextSide = {
       ...currentSide,

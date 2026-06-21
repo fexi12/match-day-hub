@@ -46,7 +46,10 @@ const statBelongsToPlayer = (row: { playerId?: string; playerName: string }, pla
   row.playerId ? row.playerId === playerKey(player) : row.playerName === player.name;
 
 const goalValue = (side: FiveSide, player: FivePlayer) =>
-  side.goals?.find((row) => statBelongsToPlayer(row, player))?.goals ?? 0;
+  side.goals?.find((row) => statBelongsToPlayer(row, player) && !row.ownGoal)?.goals ?? 0;
+
+const ownGoalValue = (opponentSide: FiveSide, player: FivePlayer) =>
+  opponentSide.goals?.find((row) => statBelongsToPlayer(row, player) && row.ownGoal)?.goals ?? 0;
 
 const assistValue = (side: FiveSide, player: FivePlayer) =>
   side.assists?.find((row) => statBelongsToPlayer(row, player))?.assists ?? 0;
@@ -92,7 +95,7 @@ export function FiveMode() {
     }
 
     const teams = Math.min(maxTeams, Math.max(2, normalizeScore(teamCount || DEFAULT_TEAM_COUNT)));
-    const selectedTeams = lineupTeams.slice(0, teams);
+    const selectedTeams = buildFiveTeamsFromLineup(players).slice(0, teams);
     const count = Math.max(1, targetMatches || (teams * (teams - 1)) / 2);
     const matches = buildMiniMatchesFromTeams(selectedTeams, count);
 
@@ -104,7 +107,7 @@ export function FiveMode() {
     });
     setTeamCount(teams);
     setTargetMatches(count);
-    toast.success(`Generated ${teams} pitch teams and ${count} mini-matches`);
+    toast.success(`Generated ${teams} balanced teams and ${count} mini-matches`);
   };
 
   const addMatch = () => {
@@ -113,7 +116,10 @@ export function FiveMode() {
       Math.max(2, current.teamCount || teamCount || DEFAULT_TEAM_COUNT),
     );
     const nextRound = current.matches.length + 1;
-    const extra = buildMiniMatchesFromTeams(lineupTeams.slice(0, teams), nextRound).at(-1);
+    const extra = buildMiniMatchesFromTeams(
+      buildFiveTeamsFromLineup(players).slice(0, teams),
+      nextRound,
+    ).at(-1);
     if (!extra) {
       toast.error("Need at least 10 players across the pitch teams to add a 5v5 match.");
       return;
@@ -132,6 +138,19 @@ export function FiveMode() {
     saveFiveMode({
       ...current,
       matches: updatePlayerGoal(current.matches, id, side, player, goals),
+    });
+  };
+
+  const updateOwnGoal = (
+    id: number,
+    concedingSide: "home" | "away",
+    player: FivePlayer,
+    goals: number,
+  ) => {
+    const scoringSide = concedingSide === "home" ? "away" : "home";
+    saveFiveMode({
+      ...current,
+      matches: updatePlayerGoal(current.matches, id, scoringSide, player, goals, { ownGoal: true }),
     });
   };
 
@@ -200,8 +219,8 @@ export function FiveMode() {
             <div className="mt-4 rounded-lg border border-border bg-secondary/40 p-3">
               <p className="text-[10px] tracking-[0.2em] text-muted-foreground">PLAYER SOURCE</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Using {players.length} player names from the 5x5x5 pitch teams above. Team 1 uses
-                slots 1-5, Team 2 uses slots 6-10, and Team 3 uses slots 11-15.
+                Using {players.length} player names from the pitch above. Uneven groups are balanced
+                automatically, e.g. 13 players become 5 / 4 / 4.
               </p>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -258,6 +277,7 @@ export function FiveMode() {
                     miniMatch={miniMatch}
                     canEdit={canEdit}
                     onGoal={updateGoal}
+                    onOwnGoal={updateOwnGoal}
                     onAssist={updateAssist}
                     onRename={renamePlayer}
                   />
@@ -275,12 +295,14 @@ function MiniMatchCard({
   miniMatch,
   canEdit,
   onGoal,
+  onOwnGoal,
   onAssist,
   onRename,
 }: {
   miniMatch: FiveMiniMatch;
   canEdit: boolean;
   onGoal: (id: number, side: "home" | "away", player: FivePlayer, goals: number) => void;
+  onOwnGoal: (id: number, side: "home" | "away", player: FivePlayer, goals: number) => void;
   onAssist: (id: number, side: "home" | "away", player: FivePlayer, assists: number) => void;
   onRename: (player: FivePlayer, nextName: string) => void;
 }) {
@@ -303,8 +325,10 @@ function MiniMatchCard({
           side="home"
           matchId={miniMatch.id}
           team={miniMatch.home}
+          opponentTeam={miniMatch.away}
           canEdit={canEdit}
           onGoal={onGoal}
+          onOwnGoal={onOwnGoal}
           onAssist={onAssist}
           onRename={onRename}
         />
@@ -313,8 +337,10 @@ function MiniMatchCard({
           side="away"
           matchId={miniMatch.id}
           team={miniMatch.away}
+          opponentTeam={miniMatch.home}
           canEdit={canEdit}
           onGoal={onGoal}
+          onOwnGoal={onOwnGoal}
           onAssist={onAssist}
           onRename={onRename}
         />
@@ -326,19 +352,23 @@ function MiniMatchCard({
 function TeamGoalBlock({
   title,
   team,
+  opponentTeam,
   side,
   matchId,
   canEdit,
   onGoal,
+  onOwnGoal,
   onAssist,
   onRename,
 }: {
   title: string;
   team: FiveSide;
+  opponentTeam: FiveSide;
   side: "home" | "away";
   matchId: number;
   canEdit: boolean;
   onGoal: (id: number, side: "home" | "away", player: FivePlayer, goals: number) => void;
+  onOwnGoal: (id: number, side: "home" | "away", player: FivePlayer, goals: number) => void;
   onAssist: (id: number, side: "home" | "away", player: FivePlayer, assists: number) => void;
   onRename: (player: FivePlayer, nextName: string) => void;
 }) {
@@ -354,7 +384,7 @@ function TeamGoalBlock({
         {team.players.map((player) => (
           <div
             key={playerKey(player)}
-            className="grid grid-cols-[1fr_140px] items-center gap-2 rounded-lg bg-secondary p-2"
+            className="grid grid-cols-[1fr_200px] items-center gap-2 rounded-lg bg-secondary p-2"
           >
             <div className="flex min-w-0 items-center gap-2">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary font-display text-xs text-primary-foreground">
@@ -368,7 +398,7 @@ function TeamGoalBlock({
                 aria-label="Player name"
               />
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <div className="flex items-center gap-1">
                 <Target className="h-3 w-3 text-accent" />
                 <Input
@@ -379,6 +409,18 @@ function TeamGoalBlock({
                   disabled={!canEdit}
                   className="h-8 w-11 text-center font-display"
                   aria-label={`${player.name} goals`}
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-display text-destructive">OG</span>
+                <Input
+                  type="number"
+                  min={0}
+                  value={ownGoalValue(opponentTeam, player)}
+                  onChange={(e) => onOwnGoal(matchId, side, player, Number(e.target.value))}
+                  disabled={!canEdit}
+                  className="h-8 w-11 text-center font-display"
+                  aria-label={`${player.name} own goals`}
                 />
               </div>
               <div className="flex items-center gap-1">
