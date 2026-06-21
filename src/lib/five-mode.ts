@@ -174,6 +174,17 @@ const sideFromTeam = (team: FiveTeam): FiveSide => ({
   assists: [],
 });
 
+export const buildManualMiniMatch = (
+  home: FiveTeam,
+  away: FiveTeam,
+  round: number,
+): FiveMiniMatch => ({
+  id: Date.now() + round,
+  round,
+  home: sideFromTeam(home),
+  away: sideFromTeam(away),
+});
+
 const pairTeams = (teams: FiveTeam[]) => {
   const pairs: Array<[FiveTeam, FiveTeam]> = [];
   for (let home = 0; home < teams.length; home += 1) {
@@ -194,12 +205,7 @@ export const buildMiniMatchesFromTeams = (
   const count = Math.max(1, normalizeScore(targetMatches ?? pairs.length));
   return Array.from({ length: count }).map((_, index) => {
     const [home, away] = pairs[index % pairs.length];
-    return {
-      id: Date.now() + index,
-      round: index + 1,
-      home: sideFromTeam(home),
-      away: sideFromTeam(away),
-    };
+    return buildManualMiniMatch(home, away, index + 1);
   });
 };
 

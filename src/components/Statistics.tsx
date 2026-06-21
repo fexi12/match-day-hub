@@ -178,7 +178,7 @@ function FiveModeFullTimeReport() {
             </div>
             {teamStandings.length === 0 ? (
               <p className="text-sm text-primary-foreground/60 italic">
-                Generate 5x5x5 mini-matches and add player goals to create the table.
+                Create 5x5x5 mini-matches manually and add player goals to create the table.
               </p>
             ) : (
               <div className="space-y-2">

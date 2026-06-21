@@ -271,13 +271,13 @@ export function Lineup() {
         {isFiveMode && (
           <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border-2 border-accent/40 bg-accent/10 p-4">
             <div className="min-w-0 flex-1">
-              <p className="font-display text-lg">Three teams · five players each</p>
+              <p className="font-display text-lg">Player pool · balanced teams</p>
               <p className="text-sm text-muted-foreground">
-                Add the player names on this field, then generate the mini-matches below.
+                Add the player names on this field, then create each mini-match manually below.
               </p>
             </div>
             <Button asChild className="font-display tracking-wider">
-              <a href="#five-mode">Generate 5x5x5</a>
+              <a href="#five-mode">Create 5x5x5 Match</a>
             </Button>
           </div>
         )}

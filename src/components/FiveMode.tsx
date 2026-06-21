@@ -3,15 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMatch, type Stat } from "@/lib/match-store";
 import { isFiveModeFormat } from "@/lib/match-formats";
-import { Goal, Plus, Shuffle, Target, Users } from "lucide-react";
+import { Goal, Plus, Target, Users } from "lucide-react";
 import { toast } from "sonner";
 import {
-  DEFAULT_MATCH_COUNT,
   DEFAULT_TEAM_COUNT,
   FIVE_MODE_LABEL,
   TEAM_SIZE,
+  buildManualMiniMatch,
   buildFiveTeamsFromLineup,
-  buildMiniMatchesFromTeams,
   emptyFiveModeState,
   normalizeScore,
   playerKey,
@@ -58,8 +57,9 @@ export function FiveMode() {
   const { match, update, canEdit } = useMatch();
   const isSelected = isFiveModeFormat(match.format);
   const current = getFiveMode(match.stats);
-  const [targetMatches, setTargetMatches] = useState(current.targetMatches || DEFAULT_MATCH_COUNT);
   const [teamCount, setTeamCount] = useState(current.teamCount || DEFAULT_TEAM_COUNT);
+  const [homeTeamIndex, setHomeTeamIndex] = useState(0);
+  const [awayTeamIndex, setAwayTeamIndex] = useState(1);
 
   const lineupTeams = useMemo(
     () => buildFiveTeamsFromLineup(match.home_players),
@@ -67,6 +67,14 @@ export function FiveMode() {
   );
   const players = useMemo(() => lineupTeams.flatMap((team) => team.players), [lineupTeams]);
   const maxTeams = players.length >= TEAM_SIZE * 2 ? lineupTeams.length : 0;
+  const selectedTeamCount = Math.min(
+    maxTeams,
+    Math.max(2, normalizeScore(teamCount || DEFAULT_TEAM_COUNT)),
+  );
+  const availableTeams = useMemo(
+    () => buildFiveTeamsFromLineup(players).slice(0, selectedTeamCount),
+    [players, selectedTeamCount],
+  );
   if (!isSelected) return null;
 
   const saveFiveMode = (next: FiveModeState) => {
@@ -85,53 +93,36 @@ export function FiveMode() {
   };
 
   const enableMode = () => {
-    saveFiveMode({ ...current, enabled: true, targetMatches, teamCount });
-  };
-
-  const generate = () => {
-    if (maxTeams < 2) {
-      toast.error("Need at least 10 players across the pitch teams to generate 5v5 teams.");
-      return;
-    }
-
-    const teams = Math.min(maxTeams, Math.max(2, normalizeScore(teamCount || DEFAULT_TEAM_COUNT)));
-    const selectedTeams = buildFiveTeamsFromLineup(players).slice(0, teams);
-    const count = Math.max(1, targetMatches || (teams * (teams - 1)) / 2);
-    const matches = buildMiniMatchesFromTeams(selectedTeams, count);
-
-    saveFiveMode({
-      enabled: true,
-      targetMatches: count,
-      teamCount: teams,
-      matches,
-    });
-    setTeamCount(teams);
-    setTargetMatches(count);
-    toast.success(`Generated ${teams} balanced teams and ${count} mini-matches`);
+    saveFiveMode({ ...current, enabled: true, targetMatches: current.matches.length, teamCount });
   };
 
   const addMatch = () => {
-    const teams = Math.min(
-      maxTeams,
-      Math.max(2, current.teamCount || teamCount || DEFAULT_TEAM_COUNT),
-    );
-    const nextRound = current.matches.length + 1;
-    const extra = buildMiniMatchesFromTeams(
-      buildFiveTeamsFromLineup(players).slice(0, teams),
-      nextRound,
-    ).at(-1);
-    if (!extra) {
-      toast.error("Need at least 10 players across the pitch teams to add a 5v5 match.");
+    if (maxTeams < 2) {
+      toast.error("Need at least 10 players in the 5x5x5 player pool to create a match.");
       return;
     }
+    if (availableTeams.length < 2) {
+      toast.error("Choose at least 2 teams to create a 5x5x5 match.");
+      return;
+    }
+    const safeHomeIndex = Math.min(homeTeamIndex, availableTeams.length - 1);
+    const fallbackAwayIndex = safeHomeIndex === 0 ? 1 : 0;
+    const safeAwayIndex =
+      awayTeamIndex !== safeHomeIndex && availableTeams[awayTeamIndex]
+        ? awayTeamIndex
+        : fallbackAwayIndex;
+    const homeTeam = availableTeams[safeHomeIndex];
+    const awayTeam = availableTeams[safeAwayIndex];
+    const nextRound = current.matches.length + 1;
+    const extra = buildManualMiniMatch(homeTeam, awayTeam, nextRound);
     saveFiveMode({
       ...current,
       enabled: true,
-      teamCount: teams,
+      teamCount: selectedTeamCount,
       targetMatches: nextRound,
       matches: [...current.matches, extra],
     });
-    setTargetMatches(nextRound);
+    toast.success(`Created match ${nextRound}: ${homeTeam.name} vs ${awayTeam.name}`);
   };
 
   const updateGoal = (id: number, side: "home" | "away", player: FivePlayer, goals: number) => {
@@ -178,15 +169,15 @@ export function FiveMode() {
             </p>
             <h2 className="mt-2 text-5xl md:text-6xl">5x5x5 Mode</h2>
             <p className="mt-4 max-w-2xl text-muted-foreground">
-              Add the players on the pitch above, choose how many teams you want, generate the local
-              mini-matches, and record goals + assists for each individual player. The match score
-              updates from player goals; assists feed the leaderboard.
+              Add the players on the pitch above, choose the two teams for each local match, and
+              create matches one by one. Record goals, own goals, and assists for each individual
+              player; the match score updates from player goals and own goals.
             </p>
           </div>
 
           <div className="border-2 border-primary rounded-xl bg-card p-4 min-w-[300px]">
             <p className="text-xs tracking-[0.25em] text-muted-foreground">SESSION SETUP</p>
-            <div className="mt-3 grid grid-cols-3 gap-3">
+            <div className="mt-3 grid grid-cols-2 gap-3">
               <div>
                 <p className="text-[10px] tracking-[0.2em] text-muted-foreground">PLAYERS</p>
                 <p className="font-display text-3xl">{players.length}</p>
@@ -204,17 +195,6 @@ export function FiveMode() {
                 />
                 <p className="mt-1 text-[10px] text-muted-foreground">max {maxTeams || 0}</p>
               </div>
-              <div>
-                <p className="text-[10px] tracking-[0.2em] text-muted-foreground">MATCHES</p>
-                <Input
-                  type="number"
-                  min={1}
-                  value={targetMatches}
-                  onChange={(e) => setTargetMatches(Number(e.target.value))}
-                  disabled={!canEdit}
-                  className="mt-1 h-9 font-display text-lg"
-                />
-              </div>
             </div>
             <div className="mt-4 rounded-lg border border-border bg-secondary/40 p-3">
               <p className="text-[10px] tracking-[0.2em] text-muted-foreground">PLAYER SOURCE</p>
@@ -223,6 +203,40 @@ export function FiveMode() {
                 automatically, e.g. 13 players become 5 / 4 / 4.
               </p>
             </div>
+            {availableTeams.length >= 2 && (
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[10px] tracking-[0.2em] text-muted-foreground">HOME</p>
+                  <select
+                    value={homeTeamIndex}
+                    onChange={(e) => setHomeTeamIndex(Number(e.target.value))}
+                    disabled={!canEdit}
+                    className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 font-display text-sm"
+                  >
+                    {availableTeams.map((team, index) => (
+                      <option key={team.name} value={index} disabled={index === awayTeamIndex}>
+                        {team.name} ({team.players.length})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <p className="text-[10px] tracking-[0.2em] text-muted-foreground">AWAY</p>
+                  <select
+                    value={awayTeamIndex}
+                    onChange={(e) => setAwayTeamIndex(Number(e.target.value))}
+                    disabled={!canEdit}
+                    className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 font-display text-sm"
+                  >
+                    {availableTeams.map((team, index) => (
+                      <option key={team.name} value={index} disabled={index === homeTeamIndex}>
+                        {team.name} ({team.players.length})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
               {!current.enabled && (
                 <Button
@@ -235,24 +249,16 @@ export function FiveMode() {
                 </Button>
               )}
               <Button
-                onClick={generate}
-                disabled={!canEdit}
-                className="font-display tracking-wider"
-              >
-                <Shuffle className="h-4 w-4 mr-2" /> Generate
-              </Button>
-              <Button
                 onClick={addMatch}
                 disabled={!canEdit}
-                variant="outline"
                 className="font-display tracking-wider"
               >
-                <Plus className="h-4 w-4 mr-2" /> More
+                <Plus className="h-4 w-4 mr-2" /> Create Match
               </Button>
             </div>
             {!canEdit && (
               <p className="mt-3 text-xs text-muted-foreground italic">
-                Sign in with editor access to generate teams and edit player goals/assists.
+                Sign in with editor access to create matches and edit player goals/assists.
               </p>
             )}
           </div>
@@ -266,8 +272,8 @@ export function FiveMode() {
             </div>
             {current.matches.length === 0 ? (
               <div className="border-2 border-dashed border-primary/30 rounded-xl p-8 text-center text-muted-foreground">
-                Add player names to the 5x5x5 pitch teams above, choose how many teams you want to
-                use, then generate the 5x5x5 session. The mini-matches keep those team groups.
+                Add player names to the 5x5x5 player pool above, choose Home and Away teams here,
+                then create each match manually.
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">

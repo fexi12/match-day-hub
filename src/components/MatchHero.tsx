@@ -80,7 +80,8 @@ export function MatchHero() {
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-[200px] text-center">
                   <p>
-                    Select the match format. 5x5x5 opens the three-team player pool and generator.
+                    Select the match format. 5x5x5 opens the player pool and manual mini-match
+                    creator.
                   </p>
                 </TooltipContent>
               </Tooltip>
