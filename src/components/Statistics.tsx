@@ -159,6 +159,18 @@ function FiveModeFullTimeReport() {
   );
   const totalAssists = playerStandings.reduce((sum, row) => sum + row.assists, 0);
   const maxTeamGoals = Math.max(1, ...teamStandings.map((row) => row.goalsFor));
+  const topScorer = [...playerStandings].sort(
+    (a, b) => b.goals - a.goals || a.name.localeCompare(b.name),
+  )[0];
+  const mostAppearances = [...playerStandings].sort(
+    (a, b) => b.played - a.played || a.name.localeCompare(b.name),
+  )[0];
+  const topAssister = [...playerStandings].sort(
+    (a, b) => b.assists - a.assists || a.name.localeCompare(b.name),
+  )[0];
+  const bestPoints = [...playerStandings].sort(
+    (a, b) => b.points - a.points || a.name.localeCompare(b.name),
+  )[0];
 
   return (
     <section id="stats" className="bg-primary text-primary-foreground">
@@ -167,8 +179,36 @@ function FiveModeFullTimeReport() {
         <h2 className="mt-2 text-5xl md:text-6xl">5x5x5 Statistics</h2>
         <p className="mt-4 max-w-2xl text-primary-foreground/70">
           This format uses the team leaderboard and goals graph instead of the normal two-team match
-          report.
+          report. The player stats can be used for season awards like top scorer, most appearances
+          and top assister.
         </p>
+
+        <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <AwardCard
+            label="Top Scorer"
+            player={topScorer?.name}
+            value={topScorer?.goals ?? 0}
+            unit="goals"
+          />
+          <AwardCard
+            label="Most Appearances"
+            player={mostAppearances?.name}
+            value={mostAppearances?.played ?? 0}
+            unit="matches"
+          />
+          <AwardCard
+            label="Top Assister"
+            player={topAssister?.name}
+            value={topAssister?.assists ?? 0}
+            unit="assists"
+          />
+          <AwardCard
+            label="Best Points"
+            player={bestPoints?.name}
+            value={bestPoints?.points ?? 0}
+            unit="pts"
+          />
+        </div>
 
         <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-8">
           <div className="border-2 border-accent/40 rounded-xl p-5">
@@ -242,6 +282,28 @@ function FiveModeFullTimeReport() {
         </div>
       </div>
     </section>
+  );
+}
+
+function AwardCard({
+  label,
+  player,
+  value,
+  unit,
+}: {
+  label: string;
+  player?: string;
+  value: number;
+  unit: string;
+}) {
+  return (
+    <div className="rounded-xl border-2 border-accent/40 bg-primary-foreground/10 p-4">
+      <p className="text-[10px] tracking-[0.2em] text-accent">{label.toUpperCase()}</p>
+      <p className="mt-2 truncate font-display text-2xl">{player || "—"}</p>
+      <p className="mt-1 text-sm text-primary-foreground/70">
+        {value} {unit}
+      </p>
+    </div>
   );
 }
 

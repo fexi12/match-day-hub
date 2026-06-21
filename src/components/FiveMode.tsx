@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMatch, type Stat } from "@/lib/match-store";
 import { isFiveModeFormat } from "@/lib/match-formats";
-import { Goal, Plus, Target, Users } from "lucide-react";
+import { Goal, Plus, Target, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import {
   DEFAULT_TEAM_COUNT,
@@ -159,6 +159,25 @@ export function FiveMode() {
     });
   };
 
+  const removeMatch = (id: number) => {
+    const miniMatch = current.matches.find((item) => item.id === id);
+    if (!miniMatch) return;
+    const ok = window.confirm(
+      `Remove match ${miniMatch.round}: ${miniMatch.home.name} vs ${miniMatch.away.name}? This also removes its goals, assists, own goals and appearances from the stats.`,
+    );
+    if (!ok) return;
+
+    const matches = current.matches
+      .filter((item) => item.id !== id)
+      .map((item, index) => ({ ...item, round: index + 1 }));
+    saveFiveMode({
+      ...current,
+      targetMatches: matches.length,
+      matches,
+    });
+    toast.success("Match removed from 5x5x5 stats");
+  };
+
   return (
     <section id="five-mode" className="bg-background border-b border-border">
       <div className="mx-auto max-w-7xl px-6 py-20">
@@ -286,6 +305,7 @@ export function FiveMode() {
                     onOwnGoal={updateOwnGoal}
                     onAssist={updateAssist}
                     onRename={renamePlayer}
+                    onRemove={removeMatch}
                   />
                 ))}
               </div>
@@ -304,6 +324,7 @@ function MiniMatchCard({
   onOwnGoal,
   onAssist,
   onRename,
+  onRemove,
 }: {
   miniMatch: FiveMiniMatch;
   canEdit: boolean;
@@ -311,6 +332,7 @@ function MiniMatchCard({
   onOwnGoal: (id: number, side: "home" | "away", player: FivePlayer, goals: number) => void;
   onAssist: (id: number, side: "home" | "away", player: FivePlayer, assists: number) => void;
   onRename: (player: FivePlayer, nextName: string) => void;
+  onRemove: (id: number) => void;
 }) {
   const homeScore = sideScore(miniMatch.home);
   const awayScore = sideScore(miniMatch.away);
@@ -318,7 +340,19 @@ function MiniMatchCard({
   return (
     <div className="border-2 border-primary rounded-xl bg-card p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs tracking-[0.25em] text-muted-foreground">MATCH {miniMatch.round}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-xs tracking-[0.25em] text-muted-foreground">MATCH {miniMatch.round}</p>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => onRemove(miniMatch.id)}
+              className="inline-flex items-center gap-1 rounded-md border border-destructive/30 px-2 py-1 text-[10px] font-display tracking-wider text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
+              aria-label={`Remove match ${miniMatch.round}`}
+            >
+              <Trash2 className="h-3 w-3" /> Remove
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-2 font-display text-3xl">
           <span className="rounded-lg border border-border px-3 py-1">{homeScore}</span>
           <span className="text-accent">:</span>
