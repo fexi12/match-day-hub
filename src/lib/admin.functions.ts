@@ -21,6 +21,7 @@ export type AdminUserRow = {
   created_at: string;
   is_admin: boolean;
   is_approved: boolean;
+  can_delete: boolean;
 };
 
 export const listUsersWithRoles = createServerFn({ method: "GET" })
@@ -59,6 +60,7 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
         // Editors are allowed by default. The existing "user" role is used as
         // an explicit deny/revoked marker so admins can turn access off later.
         is_approved: isAdmin || !isRevoked,
+        can_delete: isAdmin || set.has("deleter"),
       };
     });
   });
@@ -96,6 +98,36 @@ export const setUserApproval = createServerFn({ method: "POST" })
         .from("user_roles")
         .upsert({ user_id: data.user_id, role: "user" }, { onConflict: "user_id,role" });
       if (revokeError) throw new Error(revokeError.message);
+    }
+    return { ok: true };
+  });
+
+export const setUserDeleter = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        user_id: z.string().uuid(),
+        can_delete: z.boolean(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+
+    const supabaseAdmin = getSupabaseAdminClient();
+    if (data.can_delete) {
+      const { error } = await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: data.user_id, role: "deleter" }, { onConflict: "user_id,role" });
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabaseAdmin
+        .from("user_roles")
+        .delete()
+        .eq("user_id", data.user_id)
+        .eq("role", "deleter");
+      if (error) throw new Error(error.message);
     }
     return { ok: true };
   });

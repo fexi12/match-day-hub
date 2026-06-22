@@ -9,6 +9,7 @@ type AuthCtx = {
   loading: boolean;
   isAdmin: boolean;
   isApproved: boolean;
+  canDelete: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<{ error?: string }>;
   signUpWithEmail: (email: string, password: string) => Promise<{ error?: string }>;
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
 
   useEffect(() => {
     const consumeOAuthCallback = async () => {
@@ -125,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!uid) {
       setIsAdmin(false);
       setIsApproved(false);
+      setCanDelete(false);
       return;
     }
 
@@ -140,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Everyone signed in can edit by default. Admins can revoke editor access
         // from /admin, which stores the existing "user" role as a deny marker.
         setIsApproved(admin || !revoked);
+        setCanDelete(admin || roles.has("deleter"));
       });
 
     // Save Google profile photo so squads can show it by email
@@ -210,6 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         isAdmin,
         isApproved,
+        canDelete,
         signInWithGoogle,
         signInWithEmail,
         signUpWithEmail,

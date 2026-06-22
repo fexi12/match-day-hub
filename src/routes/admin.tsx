@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { AuthProvider, useAuth } from "@/lib/auth";
-import { listUsersWithRoles, setUserApproval, type AdminUserRow } from "@/lib/admin.functions";
+import { listUsersWithRoles, setUserApproval, setUserDeleter, type AdminUserRow } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — Ararat Porto FC" }] }),
@@ -30,6 +30,7 @@ function AdminPage() {
   const navigate = useNavigate();
   const list = useServerFn(listUsersWithRoles);
   const setApproval = useServerFn(setUserApproval);
+  const setDeleter = useServerFn(setUserDeleter);
 
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -59,14 +60,29 @@ function AdminPage() {
       .finally(() => setLoadingList(false));
   }, [user, isAdmin, loading, list, navigate]);
 
-  const toggle = async (u: AdminUserRow, value: boolean) => {
-    setBusy(u.id);
+  const toggleApproval = async (u: AdminUserRow, value: boolean) => {
+    setBusy(u.id + ":editor");
     try {
       await setApproval({ data: { user_id: u.id, approved: value } });
       setUsers((rows) =>
         rows.map((r) => (r.id === u.id ? { ...r, is_approved: value || r.is_admin } : r)),
       );
-      toast.success(value ? "Approved" : "Revoked");
+      toast.success(value ? "Editor access granted" : "Editor access revoked");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const toggleDeleter = async (u: AdminUserRow, value: boolean) => {
+    setBusy(u.id + ":deleter");
+    try {
+      await setDeleter({ data: { user_id: u.id, can_delete: value } });
+      setUsers((rows) =>
+        rows.map((r) => (r.id === u.id ? { ...r, can_delete: value || r.is_admin } : r)),
+      );
+      toast.success(value ? "Delete access granted" : "Delete access revoked");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -96,7 +112,7 @@ function AdminPage() {
         <div className="mx-auto max-w-4xl px-6 py-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <ShieldCheck className="h-6 w-6 text-accent" />
-            <h1 className="font-display text-2xl tracking-wider">Editor Approvals</h1>
+            <h1 className="font-display text-2xl tracking-wider">User Permissions</h1>
           </div>
           <Button asChild variant="outline">
             <Link to="/">
@@ -109,8 +125,8 @@ function AdminPage() {
 
       <section className="mx-auto max-w-4xl px-6 py-10">
         <p className="text-sm text-muted-foreground mb-6">
-          Approve users to let them edit matches, lineups, stats and videos. Public visitors can
-          always view.
+          Control what each user can do. Everyone can view. <strong>Editor</strong> lets them create
+          and edit matches. <strong>Deleter</strong> lets them permanently delete matches.
         </p>
 
         {loadError ? (
@@ -136,13 +152,23 @@ function AdminPage() {
                     {new Date(u.created_at).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Editor</span>
-                  <Switch
-                    checked={u.is_approved}
-                    disabled={u.is_admin || busy === u.id}
-                    onCheckedChange={(v) => toggle(u, v)}
-                  />
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Editor</span>
+                    <Switch
+                      checked={u.is_approved}
+                      disabled={u.is_admin || busy === u.id + ":editor"}
+                      onCheckedChange={(v) => toggleApproval(u, v)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Deleter</span>
+                    <Switch
+                      checked={u.can_delete}
+                      disabled={u.is_admin || busy === u.id + ":deleter"}
+                      onCheckedChange={(v) => toggleDeleter(u, v)}
+                    />
+                  </div>
                 </div>
               </div>
             ))}

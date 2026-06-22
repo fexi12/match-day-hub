@@ -12,6 +12,9 @@ import { MatchHero } from "@/components/MatchHero";
 import { FiveMode } from "@/components/FiveMode";
 import { Weather } from "@/components/Weather";
 import { MatchesDialog } from "@/components/MatchesDialog";
+import { LiveScore } from "@/components/LiveScore";
+import { Attendance } from "@/components/Attendance";
+import { MatchRecap } from "@/components/MatchRecap";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { MatchProvider, useMatch } from "@/lib/match-store";
 import { AuthProvider, useAuth } from "@/lib/auth";
@@ -64,13 +67,19 @@ function Page() {
     await createNewMatch();
   };
 
-  const navLinks = user ? (
+  const navLinks = (
     <div className="flex flex-col gap-1">
       <a
         href="#lineup"
         className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition"
       >
         SQUAD
+      </a>
+      <a
+        href="#attendance"
+        className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition"
+      >
+        ATTENDANCE
       </a>
       <a
         href="#stats"
@@ -95,27 +104,6 @@ function Page() {
         className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition"
       >
         SEASON
-      </a>
-    </div>
-  ) : (
-    <div className="flex flex-col gap-1">
-      <a
-        href="#lineup"
-        className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition"
-      >
-        SQUAD
-      </a>
-      <a
-        href="#stats"
-        className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition"
-      >
-        STATS
-      </a>
-      <a
-        href="#videos"
-        className="px-4 py-3 text-sm font-semibold tracking-wider hover:bg-accent/20 rounded-lg transition"
-      >
-        VIDEOS
       </a>
     </div>
   );
@@ -181,16 +169,12 @@ function Page() {
               <a href="#videos" className="hover:text-accent transition">
                 VIDEOS
               </a>
-              {user && (
-                <>
-                  <a href="/rankings" className="hover:text-accent transition">
-                    RANKINGS
-                  </a>
-                  <a href="/season" className="hover:text-accent transition">
-                    SEASON
-                  </a>
-                </>
-              )}
+              <a href="/rankings" className="hover:text-accent transition">
+                RANKINGS
+              </a>
+              <a href="/season" className="hover:text-accent transition">
+                SEASON
+              </a>
             </div>
             {user && (
               <>
@@ -268,35 +252,21 @@ function Page() {
               track every play, and keep every match on record.
             </p>
             <div className="mt-10 flex flex-wrap gap-3 font-display tracking-wider">
-              {user ? (
-                <>
-                  <a href="#lineup" className={navBtnActive}>
-                    BUILD THE LINEUP
-                  </a>
-                  <a href="#videos" className={navBtn}>
-                    HIGHLIGHTS
-                  </a>
-                  <a href="/rankings" className={navBtn}>
-                    RANKINGS
-                  </a>
-                  <a href="/season" className={navBtn}>
-                    SEASON
-                  </a>
-                  <MatchesDialog className={navBtn} />
-                </>
-              ) : (
-                <>
-                  <a href="#lineup" className={navBtnActive}>
-                    BUILD THE LINEUP
-                  </a>
-                  <a href="#videos" className={navBtn}>
-                    HIGHLIGHTS
-                  </a>
-                  <a href="#stats" className={navBtn}>
-                    STATS
-                  </a>
-                </>
-              )}
+              <>
+                <a href="#lineup" className={navBtnActive}>
+                  BUILD THE LINEUP
+                </a>
+                <a href="#videos" className={navBtn}>
+                  HIGHLIGHTS
+                </a>
+                <a href="/rankings" className={navBtn}>
+                  RANKINGS
+                </a>
+                <a href="/season" className={navBtn}>
+                  SEASON
+                </a>
+                {user && <MatchesDialog className={navBtn} />}
+              </>
             </div>
           </div>
           {user && <MatchHero />}
@@ -354,10 +324,13 @@ function Page() {
         </div>
       </header>
 
+      <LiveScore />
       <Lineup />
+      <Attendance />
       <FiveMode />
       <Weather />
       <Statistics />
+      <MatchRecap />
       <Videos />
 
       <Jerseys />

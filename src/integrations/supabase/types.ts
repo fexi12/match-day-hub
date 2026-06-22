@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       matches: {
         Row: {
+          attendees: Json
           away_color: string
           away_players: Json
           created_at: string
@@ -35,6 +36,7 @@ export type Database = {
           videos: Json
         }
         Insert: {
+          attendees?: Json
           away_color?: string
           away_players?: Json
           created_at?: string
@@ -54,6 +56,7 @@ export type Database = {
           videos?: Json
         }
         Update: {
+          attendees?: Json
           away_color?: string
           away_players?: Json
           created_at?: string
@@ -91,6 +94,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      player_ratings: {
+        Row: {
+          created_at: string
+          id: string
+          match_id: string | null
+          player_key: string
+          player_name: string
+          rated_by: string | null
+          rating: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          match_id?: string | null
+          player_key: string
+          player_name: string
+          rated_by?: string | null
+          rating: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          match_id?: string | null
+          player_key?: string
+          player_name?: string
+          rated_by?: string | null
+          rating?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_ratings_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -131,7 +172,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
+      app_role: "admin" | "moderator" | "user" | "deleter"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -259,7 +300,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user"],
+      app_role: ["admin", "moderator", "user", "deleter"],
     },
   },
 } as const

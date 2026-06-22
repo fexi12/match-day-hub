@@ -31,7 +31,7 @@ export function MatchesDialog({ className }: { className?: string } = {}) {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const { load, createNewMatch } = useMatch();
-  const { isAdmin } = useAuth();
+  const { canDelete } = useAuth();
 
   useEffect(() => {
     if (!open) return;
@@ -80,6 +80,7 @@ export function MatchesDialog({ className }: { className?: string } = {}) {
       stats: (data.stats as MatchState["stats"]) ?? [],
       goals: (data.goals as MatchState["goals"]) ?? [],
       videos: (data.videos as MatchState["videos"]) ?? [],
+      attendees: normalizePlayers(data.attendees),
     };
     load(m);
     setOpen(false);
@@ -152,7 +153,7 @@ export function MatchesDialog({ className }: { className?: string } = {}) {
                   {r.location ? ` · ${r.location}` : ""}
                 </p>
               </div>
-              {isAdmin && (
+              {canDelete && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

@@ -46,6 +46,7 @@ export type MatchState = {
   stats: Stat[];
   goals: Goal[];
   videos: Video[];
+  attendees: Player[];
 };
 
 const normalizePlayerKey = (value: string) =>
@@ -104,6 +105,7 @@ export const defaultMatch = (): MatchState => ({
   stats: DEFAULT_STATS,
   goals: [],
   videos: [],
+  attendees: [],
 });
 
 export function normalizePlayers(raw: unknown): Player[] {
@@ -171,10 +173,42 @@ export function MatchProvider({ children }: { children: ReactNode }) {
             stats: (data.stats as Stat[]) ?? DEFAULT_STATS,
             goals: (data.goals as Goal[]) ?? [],
             videos: (data.videos as Video[]) ?? [],
+            attendees: normalizePlayers(data.attendees),
           });
         }
       });
   }, [user]); // re-fetch on mount and whenever auth state changes
+
+  // Real-time subscription: update score and goals for all viewers without a page refresh
+  useEffect(() => {
+    const id = match.id;
+    if (!id) return;
+    const channel = supabase
+      .channel(`match-live:${id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${id}` },
+        (payload) => {
+          const d = payload.new as Record<string, unknown>;
+          setMatch((prev) => ({
+            ...prev,
+            goals: (d.goals as Goal[]) ?? prev.goals,
+            stats: (d.stats as Stat[]) ?? prev.stats,
+            home_players: normalizePlayers(d.home_players),
+            away_players: normalizePlayers(d.away_players),
+            attendees: normalizePlayers(d.attendees),
+            home_color: (d.home_color as string) ?? prev.home_color,
+            away_color: (d.away_color as string) ?? prev.away_color,
+            opponent: (d.opponent as string) ?? prev.opponent,
+            name: (d.name as string) ?? prev.name,
+          }));
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [match.id]);
 
   const save = useCallback(
     async (opts?: { quiet?: boolean; state?: MatchState }): Promise<string | null> => {
@@ -196,6 +230,7 @@ export function MatchProvider({ children }: { children: ReactNode }) {
           stats: m.stats,
           goals: m.goals,
           videos: m.videos,
+          attendees: m.attendees,
           // Bump updated_at so this game is always "the latest" loaded on next visit.
           // (There is no DB trigger to do this automatically.)
           updated_at: new Date().toISOString(),

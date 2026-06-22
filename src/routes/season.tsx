@@ -3,34 +3,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Trophy, Target, Handshake, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  normalizePlayers,
-  playerIdentity,
-  type Goal,
-  type Player,
-  type Stat,
-} from "@/lib/match-store";
-import { FIVE_MODE_LABEL, type FiveModeState, type FiveSide } from "@/lib/five-mode";
-
-type MatchRow = {
-  id: string;
-  name: string;
-  match_date: string | null;
-  format: string | null;
-  home_players: unknown;
-  away_players: unknown;
-  goals: unknown;
-  stats: unknown;
-};
-
-type PlayerSeasonStats = {
-  key: string;
-  name: string;
-  appearances: number;
-  goals: number;
-  assists: number;
-  matches: Set<string>;
-};
+import { buildSeasonStats, type SeasonMatchRow } from "@/lib/season-stats";
+import { PlayerProfileTrigger } from "@/components/PlayerProfile";
 
 export const Route = createFileRoute("/season")({
   head: () => ({
@@ -47,120 +21,8 @@ export const Route = createFileRoute("/season")({
 
 const displayYear = new Date().getFullYear();
 
-const normalizeNameKey = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
-
-const playerKeyFrom = (player: Pick<Player, "id" | "email" | "name">) =>
-  playerIdentity(player) || normalizeNameKey(player.name || player.email || "");
-
-const getOrCreate = (
-  table: Map<string, PlayerSeasonStats>,
-  key: string,
-  name: string,
-): PlayerSeasonStats => {
-  const cleanKey = key || normalizeNameKey(name);
-  if (!table.has(cleanKey)) {
-    table.set(cleanKey, {
-      key: cleanKey,
-      name: name || "Unknown player",
-      appearances: 0,
-      goals: 0,
-      assists: 0,
-      matches: new Set<string>(),
-    });
-  }
-  const row = table.get(cleanKey)!;
-  if ((!row.name || row.name === "Unknown player") && name) row.name = name;
-  return row;
-};
-
-const addAppearance = (table: Map<string, PlayerSeasonStats>, matchId: string, player: Player) => {
-  if (!player.name && !player.email) return;
-  const row = getOrCreate(
-    table,
-    playerKeyFrom(player),
-    player.name || player.email || "Unknown player",
-  );
-  if (!row.matches.has(matchId)) {
-    row.matches.add(matchId);
-    row.appearances += 1;
-  }
-};
-
-const addGoals = (
-  table: Map<string, PlayerSeasonStats>,
-  key: string | undefined,
-  name: string | undefined,
-  goals: number,
-) => {
-  if (!goals || goals <= 0 || (!key && !name)) return;
-  getOrCreate(table, key || "", name || "Unknown player").goals += goals;
-};
-
-const addAssists = (
-  table: Map<string, PlayerSeasonStats>,
-  key: string | undefined,
-  name: string | undefined,
-  assists: number,
-) => {
-  if (!assists || assists <= 0 || (!key && !name)) return;
-  getOrCreate(table, key || "", name || "Unknown player").assists += assists;
-};
-
-const applyStandardMatch = (table: Map<string, PlayerSeasonStats>, match: MatchRow) => {
-  const homePlayers = normalizePlayers(match.home_players);
-  const awayPlayers = normalizePlayers(match.away_players);
-  [...homePlayers, ...awayPlayers].forEach((player) => addAppearance(table, match.id, player));
-
-  const goals = Array.isArray(match.goals) ? (match.goals as Goal[]) : [];
-  goals.forEach((goal) => {
-    if (!goal.own_goal) {
-      addGoals(table, goal.scorer_id, goal.scorer, 1);
-      addAssists(table, goal.assist_id, goal.assist, goal.assist || goal.assist_id ? 1 : 0);
-    }
-  });
-};
-
-const applyFiveSide = (table: Map<string, PlayerSeasonStats>, matchId: string, side: FiveSide) => {
-  side.players?.forEach((player) => addAppearance(table, matchId, player));
-  side.goals?.forEach((row) => {
-    if (!row.ownGoal) addGoals(table, row.playerId, row.playerName, row.goals);
-  });
-  side.assists?.forEach((row) => addAssists(table, row.playerId, row.playerName, row.assists));
-};
-
-const applyFiveModeMatch = (table: Map<string, PlayerSeasonStats>, match: MatchRow) => {
-  const stats = Array.isArray(match.stats)
-    ? (match.stats as Array<Stat & { fiveMode?: FiveModeState }>)
-    : [];
-  const fiveMode = stats.find((row) => row.label === FIVE_MODE_LABEL)?.fiveMode;
-  if (!fiveMode?.matches?.length) return;
-
-  fiveMode.matches.forEach((miniMatch) => {
-    const miniMatchId = `${match.id}:${miniMatch.id}`;
-    applyFiveSide(table, miniMatchId, miniMatch.home);
-    applyFiveSide(table, miniMatchId, miniMatch.away);
-  });
-};
-
-const buildSeasonStats = (matches: MatchRow[]) => {
-  const table = new Map<string, PlayerSeasonStats>();
-  matches.forEach((match) => {
-    applyStandardMatch(table, match);
-    applyFiveModeMatch(table, match);
-  });
-  return [...table.values()]
-    .map((row) => ({ ...row, matches: undefined }))
-    .sort(
-      (a, b) =>
-        b.goals - a.goals ||
-        b.assists - a.assists ||
-        b.appearances - a.appearances ||
-        a.name.localeCompare(b.name),
-    );
-};
-
 function SeasonPage() {
-  const [matches, setMatches] = useState<MatchRow[]>([]);
+  const [matches, setMatches] = useState<SeasonMatchRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -170,13 +32,13 @@ function SeasonPage() {
     setLoading(true);
     supabase
       .from("matches")
-      .select("id,name,match_date,format,home_players,away_players,goals,stats")
+      .select("id,name,match_date,format,home_players,away_players,goals,stats,attendees")
       .gte("match_date", start)
       .lt("match_date", end)
       .order("match_date", { ascending: true })
       .then(({ data, error }) => {
         if (error) setError(error.message);
-        else setMatches((data ?? []) as MatchRow[]);
+        else setMatches((data ?? []) as SeasonMatchRow[]);
         setLoading(false);
       });
   }, []);
@@ -241,7 +103,9 @@ function SeasonPage() {
         <div className="mt-10 rounded-2xl border-2 border-border bg-card p-5">
           <div className="mb-5 flex items-center justify-between gap-3">
             <h2 className="font-display text-2xl tracking-wider">Players</h2>
-            <p className="text-sm text-muted-foreground">Goals · Assists · Appearances</p>
+            <p className="text-sm text-muted-foreground">
+              Goals · Assists · Appearances · Attendance
+            </p>
           </div>
 
           {loading && <p className="py-10 text-center text-muted-foreground">Loading season…</p>}
@@ -262,19 +126,34 @@ function SeasonPage() {
                     <th className="py-3 pr-3 text-right">Goals</th>
                     <th className="py-3 pr-3 text-right">Assists</th>
                     <th className="py-3 pr-3 text-right">Appearances</th>
+                    <th className="py-3 pr-3 text-right">Attendance</th>
                   </tr>
                 </thead>
                 <tbody>
                   {seasonStats.map((player, index) => (
                     <tr key={player.key} className="border-b border-border/60">
                       <td className="py-3 pr-3 font-display text-muted-foreground">{index + 1}</td>
-                      <td className="py-3 pr-3 font-semibold">{player.name}</td>
+                      <td className="py-3 pr-3 font-semibold">
+                        <PlayerProfileTrigger name={player.name}>
+                          <button className="hover:text-accent hover:underline transition">
+                            {player.name}
+                          </button>
+                        </PlayerProfileTrigger>
+                      </td>
                       <td className="py-3 pr-3 text-right font-display text-xl">{player.goals}</td>
                       <td className="py-3 pr-3 text-right font-display text-xl">
                         {player.assists}
                       </td>
                       <td className="py-3 pr-3 text-right font-display text-xl">
                         {player.appearances}
+                      </td>
+                      <td className="py-3 pr-3 text-right font-display text-xl">
+                        {player.attendances}
+                        {matches.length > 0 && (
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            ({Math.round((player.attendances / matches.length) * 100)}%)
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
