@@ -147,11 +147,13 @@ export function MatchProvider({ children }: { children: ReactNode }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Load the latest match for everyone (logged in or not) so the squad,
-    // players, stats and videos are publicly visible.
+    // Load the match with the latest match_date for everyone (logged in or
+    // not) so the squad, players, stats and videos are publicly visible.
+    // Falls back to updated_at to break ties or handle missing dates.
     supabase
       .from("matches")
       .select("*")
+      .order("match_date", { ascending: false, nullsFirst: false })
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle()
