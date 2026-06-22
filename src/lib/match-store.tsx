@@ -93,7 +93,7 @@ export const defaultMatch = (): MatchState => ({
   id: null,
   name: "Matchday 01",
   opponent: "Guest FC",
-  match_date: "2026-05-30",
+  match_date: new Date().toISOString().slice(0, 10),
   kickoff: "19:00",
   duration: "2 hours",
   location: "R. de Alves Redol 292, 4050-042 Porto",
@@ -258,10 +258,8 @@ export function MatchProvider({ children }: { children: ReactNode }) {
     [match],
   );
 
-  const matchRef = useRef(match);
   const saveRef = useRef(save);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  matchRef.current = match;
   saveRef.current = save;
 
   const update = useCallback(
@@ -285,22 +283,8 @@ export function MatchProvider({ children }: { children: ReactNode }) {
   const load = useCallback((m: MatchState) => setMatch(m), []);
 
   const createNewMatch = useCallback(async (): Promise<string | null> => {
-    const current = matchRef.current;
     const next = defaultMatch();
     next.name = `Matchday ${Date.now().toString().slice(-4)}`;
-    next.opponent = current.opponent;
-    next.match_date = current.match_date;
-    next.kickoff = current.kickoff;
-    next.duration = current.duration;
-    next.location = current.location;
-    next.format = current.format;
-    next.home_color = current.home_color;
-    next.away_color = current.away_color;
-    // Generate the next match from the current match-specific teams, keeping
-    // player identities but resetting match events so goals/assists from the
-    // previous game remain tracked only on that historical match.
-    next.home_players = normalizePlayers(current.home_players).filter((p) => p.name || p.email);
-    next.away_players = normalizePlayers(current.away_players).filter((p) => p.name || p.email);
     setMatch(next);
     // Pass the fresh state explicitly — `save` would otherwise read the previous
     // match from its closure on this render tick.
