@@ -3,17 +3,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMatch, type Stat } from "@/lib/match-store";
 import { isFiveModeFormat } from "@/lib/match-formats";
-import { Goal, Plus, Target, Trash2, Users } from "lucide-react";
+import { Goal, Plus, Target, Trash2, UserPlus, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   DEFAULT_TEAM_COUNT,
   FIVE_MODE_LABEL,
   TEAM_SIZE,
+  addPlayerToMiniMatch,
   buildManualMiniMatch,
   buildFiveTeamsFromLineup,
   emptyFiveModeState,
   normalizeScore,
   playerKey,
+  removePlayerFromMiniMatch,
   renamePlayerInMiniMatches,
   sideScore,
   updatePlayerAssist,
@@ -156,6 +158,20 @@ export function FiveMode() {
     saveFiveMode({
       ...current,
       matches: renamePlayerInMiniMatches(current.matches, player, nextName),
+    });
+  };
+
+  const addPlayer = (id: number, side: "home" | "away", name: string) => {
+    saveFiveMode({
+      ...current,
+      matches: addPlayerToMiniMatch(current.matches, id, side, name),
+    });
+  };
+
+  const removePlayer = (id: number, side: "home" | "away", player: FivePlayer) => {
+    saveFiveMode({
+      ...current,
+      matches: removePlayerFromMiniMatch(current.matches, id, side, player),
     });
   };
 
@@ -306,6 +322,8 @@ export function FiveMode() {
                     onAssist={updateAssist}
                     onRename={renamePlayer}
                     onRemove={removeMatch}
+                    onAddPlayer={addPlayer}
+                    onRemovePlayer={removePlayer}
                   />
                 ))}
               </div>
@@ -325,6 +343,8 @@ function MiniMatchCard({
   onAssist,
   onRename,
   onRemove,
+  onAddPlayer,
+  onRemovePlayer,
 }: {
   miniMatch: FiveMiniMatch;
   canEdit: boolean;
@@ -333,6 +353,8 @@ function MiniMatchCard({
   onAssist: (id: number, side: "home" | "away", player: FivePlayer, assists: number) => void;
   onRename: (player: FivePlayer, nextName: string) => void;
   onRemove: (id: number) => void;
+  onAddPlayer: (id: number, side: "home" | "away", name: string) => void;
+  onRemovePlayer: (id: number, side: "home" | "away", player: FivePlayer) => void;
 }) {
   const homeScore = sideScore(miniMatch.home);
   const awayScore = sideScore(miniMatch.away);
@@ -371,6 +393,8 @@ function MiniMatchCard({
           onOwnGoal={onOwnGoal}
           onAssist={onAssist}
           onRename={onRename}
+          onAddPlayer={onAddPlayer}
+          onRemovePlayer={onRemovePlayer}
         />
         <TeamGoalBlock
           title={miniMatch.away.name}
@@ -383,6 +407,8 @@ function MiniMatchCard({
           onOwnGoal={onOwnGoal}
           onAssist={onAssist}
           onRename={onRename}
+          onAddPlayer={onAddPlayer}
+          onRemovePlayer={onRemovePlayer}
         />
       </div>
     </div>
@@ -400,6 +426,8 @@ function TeamGoalBlock({
   onOwnGoal,
   onAssist,
   onRename,
+  onAddPlayer,
+  onRemovePlayer,
 }: {
   title: string;
   team: FiveSide;
@@ -411,7 +439,17 @@ function TeamGoalBlock({
   onOwnGoal: (id: number, side: "home" | "away", player: FivePlayer, goals: number) => void;
   onAssist: (id: number, side: "home" | "away", player: FivePlayer, assists: number) => void;
   onRename: (player: FivePlayer, nextName: string) => void;
+  onAddPlayer: (id: number, side: "home" | "away", name: string) => void;
+  onRemovePlayer: (id: number, side: "home" | "away", player: FivePlayer) => void;
 }) {
+  const [newName, setNewName] = useState("");
+
+  const addNew = () => {
+    if (!newName.trim()) return;
+    onAddPlayer(matchId, side, newName);
+    setNewName("");
+  };
+
   return (
     <div className="rounded-lg border border-border p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -437,6 +475,16 @@ function TeamGoalBlock({
                 className="h-8 min-w-0 text-sm"
                 aria-label="Player name"
               />
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => onRemovePlayer(matchId, side, player)}
+                  className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive"
+                  aria-label={`Remove ${player.name} from this match`}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div className="flex items-center gap-1">
@@ -479,6 +527,21 @@ function TeamGoalBlock({
           </div>
         ))}
       </div>
+
+      {canEdit && (
+        <div className="mt-3 flex gap-2">
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addNew()}
+            placeholder="Player arrived late? Add them…"
+            className="h-8 text-sm"
+          />
+          <Button type="button" size="sm" variant="outline" onClick={addNew} className="shrink-0">
+            <UserPlus className="h-3.5 w-3.5 mr-1" /> Add
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -318,6 +318,44 @@ export const renamePlayerInMiniMatches = (
     away: renameSidePlayer(match.away, player, nextName),
   }));
 
+export const addPlayerToMiniMatch = (
+  matches: FiveMiniMatch[],
+  matchId: number,
+  side: "home" | "away",
+  name: string,
+): FiveMiniMatch[] => {
+  const trimmed = name.trim();
+  if (!trimmed) return matches;
+  const newPlayer: FivePlayer = { name: trimmed };
+  const newKey = playerKey(newPlayer);
+  return matches.map((match) => {
+    if (match.id !== matchId) return match;
+    const currentSide = match[side];
+    if (currentSide.players.some((p) => playerKey(p) === newKey)) return match;
+    return { ...match, [side]: { ...currentSide, players: [...currentSide.players, newPlayer] } };
+  });
+};
+
+export const removePlayerFromMiniMatch = (
+  matches: FiveMiniMatch[],
+  matchId: number,
+  side: "home" | "away",
+  player: FivePlayer,
+): FiveMiniMatch[] =>
+  matches.map((match) => {
+    if (match.id !== matchId) return match;
+    const currentSide = match[side];
+    return {
+      ...match,
+      [side]: {
+        ...currentSide,
+        players: currentSide.players.filter((p) => playerKey(p) !== playerKey(player)),
+        goals: (currentSide.goals ?? []).filter((row) => !statBelongsToPlayer(row, player)),
+        assists: (currentSide.assists ?? []).filter((row) => !statBelongsToPlayer(row, player)),
+      },
+    };
+  });
+
 export const teamStandingsFor = (matches: FiveMiniMatch[]): TeamStanding[] => {
   const table = new Map<string, TeamStanding>();
 
