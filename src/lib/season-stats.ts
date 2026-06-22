@@ -130,10 +130,11 @@ const applyFiveModeMatch = (table: Map<string, PlayerSeasonStats>, match: Season
   const fiveMode = stats.find((row) => row.label === FIVE_MODE_LABEL)?.fiveMode;
   if (!fiveMode?.matches?.length) return;
 
+  // Use the parent matchday id (not a per-mini-match id) so a player who plays
+  // many mini-matches in one 5x5x5 night still only counts as one appearance.
   fiveMode.matches.forEach((miniMatch) => {
-    const miniMatchId = `${match.id}:${miniMatch.id}`;
-    applyFiveSide(table, miniMatchId, miniMatch.home);
-    applyFiveSide(table, miniMatchId, miniMatch.away);
+    applyFiveSide(table, match.id, miniMatch.home);
+    applyFiveSide(table, match.id, miniMatch.away);
   });
 };
 
