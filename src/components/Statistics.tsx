@@ -41,6 +41,16 @@ export function Statistics() {
     return <FiveModeFullTimeReport />;
   }
 
+  // Attendees who showed up but aren't placed in the lineup can still be
+  // credited with goals/assists/own goals.
+  const squadIdentities = new Set(
+    [...match.home_players, ...match.away_players].map((p) => playerIdentity(p)).filter(Boolean),
+  );
+  const extraAttendees = (match.attendees ?? []).filter((p) => {
+    const id = playerIdentity(p);
+    return id && !squadIdentities.has(id) && (p.name || p.email);
+  });
+
   const addGoal = (team: "home" | "away") =>
     update("goals", [
       ...match.goals,
@@ -91,6 +101,7 @@ export function Statistics() {
             ro={ro}
             players={match.home_players}
             ownGoalPlayers={match.away_players}
+            extraAttendees={extraAttendees}
           />
           <GoalColumn
             title={`${match.opponent} Goals`}
@@ -101,6 +112,7 @@ export function Statistics() {
             ro={ro}
             players={match.away_players}
             ownGoalPlayers={match.home_players}
+            extraAttendees={extraAttendees}
           />
         </div>
 
@@ -325,6 +337,7 @@ function GoalColumn({
   ro,
   players,
   ownGoalPlayers,
+  extraAttendees,
 }: {
   title: string;
   goals: Goal[];
@@ -334,13 +347,15 @@ function GoalColumn({
   ro: boolean;
   players: Player[];
   ownGoalPlayers: Player[];
+  extraAttendees: Player[];
 }) {
-  const selectableFor = (items: Player[]) =>
+  const selectableFor = (items: Player[], isAttendee = false) =>
     items
-      .map((player) => ({ ...player, id: playerIdentity(player) }))
+      .map((player) => ({ ...player, id: playerIdentity(player), isAttendee }))
       .filter((player) => player.id && (player.name || player.email));
-  const selectablePlayers = selectableFor(players);
-  const selectableOwnGoalPlayers = selectableFor(ownGoalPlayers);
+  const extraSelectable = selectableFor(extraAttendees, true);
+  const selectablePlayers = [...selectableFor(players), ...extraSelectable];
+  const selectableOwnGoalPlayers = [...selectableFor(ownGoalPlayers), ...extraSelectable];
 
   const applyPlayer = (goal: Goal, role: "scorer" | "assist", value: string) => {
     const sourcePlayers =
@@ -448,7 +463,7 @@ function PlayerSelect({
   label: string;
   value: string;
   snapshot: string;
-  players: Array<Player & { id: string }>;
+  players: Array<Player & { id: string; isAttendee?: boolean }>;
   disabled: boolean;
   allowNone?: boolean;
   onChange: (value: string) => void;
@@ -471,6 +486,7 @@ function PlayerSelect({
       {players.map((player) => (
         <option key={player.id} value={player.id}>
           {player.name || player.email}
+          {player.isAttendee ? " (attendee)" : ""}
         </option>
       ))}
     </select>
